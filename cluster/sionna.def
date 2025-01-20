@@ -1,0 +1,32 @@
+Bootstrap: docker
+From: tensorflow/tensorflow:2.13.0-gpu-jupyter
+
+%environment
+
+    export PROJ_ROOT="/mnt/project"
+    export PYTHONPATH=$PROJ_ROOT
+
+    export NVIDIA_VISIBLE_DEVICES=0
+    export CUDA_VISIBLE_DEVICES=0
+
+    export PIP_ROOT_USER_ACTION=ignore
+    export TF_CPP_MIN_LOG_LEVEL=2	# Ignore TF warning messages
+
+%files
+    ./cluster/requirements.txt /opt/requirements.txt
+
+%post
+
+    apt update -y
+    apt dist-upgrade -y
+
+    pip install --upgrade pip
+    pip install -r /opt/requirements.txt
+
+%runscript
+
+    cd ${PROJ_ROOT} || exit
+
+    echo "GPU: $CUDA_VISIBLE_DEVICES"
+
+    cluster/run_job.sh "$@"
