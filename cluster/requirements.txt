@@ -1,0 +1,14 @@
+jupyterlab>=3.0
+notebook
+ipykernel>6.0
+drjit==0.4.3
+mitsuba==3.4.0
+matplotlib
+pandas
+seaborn
+numpy
+sionna>=0.17.0
+tqdm
+cvxpy
+tensorflow_probability
+numba
