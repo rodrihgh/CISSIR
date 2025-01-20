@@ -1,17 +1,29 @@
-# CISSIR
+# CISSIR <img src="pics/cissir-logo.svg" height="120" align="right">
+
+[![dependency - sionna](https://img.shields.io/badge/sionna->=0.17.0-green)][sionna]
+[![dependency - cvxpy](https://img.shields.io/badge/cvxpy-1.5.2-blue)][cvxpy]
+[![CC BY 4.0][cc-by-shield]][cc-by]
+
+[cc-by]: http://creativecommons.org/licenses/by/4.0/
+[cc-by-shield]: https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg
+
+[sionna]: https://nvlabs.github.io/sionna/
+[cvxpy]: https://www.cvxpy.org/
 
 Software repository for **Codebooks with Integral-Split Self-Interference Reduction**
 (**CISSIR**, pronounced like "scissor").
 
 Paper submission in progress.
 
+![CISSIR diagram](pics/cissir_diagram.svg)
+
 ## Requirements
 
 Full Python dependencies in the [requirements.txt](cluster/requirements.txt) file, including:
 
-- [Sionna](https://nvlabs.github.io/sionna/) >=0.17.0
+- [Sionna][sionna] >=0.17.0
 - [Tensorflow](https://www.tensorflow.org/)
-- [CVXPY](https://www.cvxpy.org/)
+- [CVXPY][cvxpy]
 - [Pandas](https://pandas.pydata.org/)
 - [Seaborn](https://seaborn.pydata.org/)
 
