@@ -1,6 +1,6 @@
-# High-Performance Computing
+# HPC cluster
 
-The files in this directory enable code execution on a GPU-based 
+The files in this directory allow to run the code on a GPU-based 
 [High-Performance Computing (HPC) cluster](https://www.nvidia.com/en-us/glossary/high-performance-computing/).
 Although not mandatory, GPU acceleration is encouraged in order to speed up
 [Sionna](https://nvlabs.github.io/sionna/)'s ray-tracing and link-level simulations.
@@ -29,8 +29,8 @@ After building the container, you can submit a job to the HPC cluster with [sbat
 sbatch cluster/submit_job.sh
 ```
 
-Once submitted, you can execute the code on your browser
+Once submitted, you can run the code on your browser
 via [JupyterLab](https://jupyterlab.readthedocs.io/).
-JupyterLab's URL will be logged and stored in a _jupyter.url_ file in the project's root.
+JupyterLab's URL will be logged and written into the file _jupyter.url_ in the project's root.
 
 [More information on Slurm commands](https://slurm.schedmd.com/quickstart.html#commands)
