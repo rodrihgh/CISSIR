@@ -16,10 +16,10 @@ Although not mandatory, GPU acceleration is encouraged in order to speed up
 Navigate to the project's root directory in the command line and run:
 
 ```shell
-singularity build --fakeroot --force cluster/sionna.sif cluster/sionna.def
+apptainer build --fakeroot --force cluster/sionna.sif cluster/sionna.def
 ```
 
-[More information on Singularity container creation](https://docs.sylabs.io/guides/3.0/user-guide/build_a_container.html)
+[More information on Apptainer container creation](https://docs.sylabs.io/guides/3.0/user-guide/build_a_container.html)
 
 ## Usage
 

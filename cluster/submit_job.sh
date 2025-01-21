@@ -18,4 +18,4 @@ source "/etc/slurm/local_job_dir.sh"
 CODE_DIR="/data/cluster/users/${USER}/cissir"
 CODE_MNT="/mnt/project"
 
-singularity run --nv --bind ${CODE_DIR}:${CODE_MNT}  ./cluster/sionna.sif
+apptainer run --nv --bind ${CODE_DIR}:${CODE_MNT}  ./cluster/sionna.sif
