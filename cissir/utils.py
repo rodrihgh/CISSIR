@@ -1,6 +1,15 @@
 """
-Text and debug utility functions.
+Text, debug and I/O utility functions.
 """
+
+import sys
+from pathlib import Path
+
+base_path = Path(__file__).parents[1].absolute()
+if str(base_path) not in sys.path:
+    sys.path.append(str(base_path))
+plot_path = base_path/"plots"
+res_path = base_path/"results"
 
 
 class PrintBuffer:
