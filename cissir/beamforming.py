@@ -1,10 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from cissir.physics import pow2db, db2mag, mag2db
 
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
 from sionna.utils import expand_to_rank, flatten_last_dims, split_dim
+
+rng = np.random.default_rng()
 
 # 6 + 6 bits
 num_q_phases = 64
@@ -61,7 +64,7 @@ def array_factor(antenna_weights, thetas_radian, n_antennas=None, transmit=True)
     return af
 
 
-def plot_beamforming_polar(bf_vectors, transmit=True, element_pattern=None,
+def plot_beamforming_polar(bf_vectors, transmit=True, element_pattern=None, color_palette=None,
                            r_lim=(-30, None), theta_lim=None, axis=None, **kwargs):
     if axis is None:
         fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
@@ -86,7 +89,10 @@ def plot_beamforming_polar(bf_vectors, transmit=True, element_pattern=None,
         el_pat_db = pow2db([element_pattern(d) for d in thetas_eval])
 
     r_max_bf = []
-    for bf_vec in bf_vectors.T:
+    colors = None if color_palette is None else sns.color_palette(color_palette, n_colors=bf_vectors.shape[-1])
+    for n, bf_vec in enumerate(bf_vectors.T):
+        if colors is not None:
+            kwargs["c"] = colors[n]
         bf = array_factor(bf_vec, thetas_eval, transmit=transmit)
         bf_db = pow2db(np.abs(bf)**2) + el_pat_db
         r_max_bf.append(max(bf_db))
@@ -105,7 +111,8 @@ def plot_beamforming_polar(bf_vectors, transmit=True, element_pattern=None,
 
 
 def dft_beamforming(steer_index, n_antennas, oversampling=4, transmit=True, normalize=True):
-    phases = 2 * np.pi * steer_index * np.arange(n_antennas) / (n_antennas * oversampling)
+    phases = (2 * np.pi * np.reshape(steer_index, (1, -1)) *
+              np.arange(n_antennas)[:, None] / (n_antennas * oversampling))
     if transmit:
         phases *= -1
     vec = np.exp(1j * phases)
@@ -114,13 +121,34 @@ def dft_beamforming(steer_index, n_antennas, oversampling=4, transmit=True, norm
     return vec
 
 
-def dft_codebook(L_max, N1, O1=4, az_min=-60, az_max=60, transmit=True):
-    worst_beam_width = np.rad2deg(2 / (N1 * np.cos(np.deg2rad(az_max))))
-    beam_degs = np.linspace(az_min + worst_beam_width / 2, az_max - worst_beam_width / 2, L_max)
+def dft_codebook(L_max: int, N1: int, O1=4, az_min=-60.0, az_max=60.0,
+                 transmit=True, full_grid=False, random_angles=False):
+    """
+    Generate codebook according to 3GPP DFT beamforming
+    :param L_max: Number of codewords (matrix columns). Ignored if ``full_grid=True``
+    :param N1: Number of antennas
+    :param O1: Oversampling factor
+    :param az_min: Minimum azimuth angle to cover
+    :param az_max: Maximum azimuth angle to cover
+    :param transmit: if ``True``, a TX codebook will be computed, otherwise a RX codebook will be computed
+    :param full_grid: If ``True``, span the full DFT grid between ``az_min`` and ``az_max``
+    :param random_angles: if ``True``, the codebook angles will be randomly sampled,
+    otherwise they will be linearly sampled. Ignored if ``full_grid=True``
+    :return: The codebook matrix with shape (N1, L_max), together with the beam angles in degrees
+    """
+    beam_degs: np.ndarray
+    if random_angles and not full_grid:
+        beam_degs = rng.uniform(low=az_min, high=az_max, size=L_max)
+    else:
+        worst_beam_width = np.rad2deg(2 / N1)  # (N1 * np.cos(np.deg2rad(az_max))))
+        beam_degs = np.linspace(az_min + worst_beam_width / 2, az_max - worst_beam_width / 2, L_max)
     beam_ang_freq = np.pi * np.sin(np.deg2rad(beam_degs))
     l_indices = np.round(beam_ang_freq * N1 * O1 / (2 * np.pi)).astype(int)
-    dft_vectors = [dft_beamforming(l_i, N1, oversampling=O1, transmit=transmit) for l_i in l_indices]
-    return np.stack(dft_vectors, axis=-1), beam_degs
+    if full_grid:
+        l_indices = np.arange(l_indices[0], l_indices[-1] + 1)
+        beam_degs = np.rad2deg(np.arcsin(2 * l_indices / (N1 * O1)))
+    dft_matrix: np.ndarray = dft_beamforming(l_indices, N1, oversampling=O1, transmit=transmit)
+    return dft_matrix, beam_degs
 
 
 class Beamspace(Layer):

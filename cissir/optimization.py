@@ -56,6 +56,19 @@ def min_eigval(mat, hermitian=False):
     return eigvals[-1]
 
 
+def spec_nuc_ratio(mat, axes=(-1, -2)):
+    """
+    Compute :math:`\|\mathbf{M}\|_{2}/\|\mathbf{M}\|_{*}` ,
+    the ratio between the spectral and nuclear norm of :math:`\mathbf{M}` ,
+    as a metric of "one-rankness"
+    :param mat: Matrix :math:`\mathbf{M}`
+    :param axes: Matrix axes on which to compute the ratio
+    :return: Spectral-to-nuclear norm ratio
+    """
+
+    return la.norm(mat, ord=2, axis=axes)/la.norm(mat, ord="nuc", axis=axes)
+
+
 def split_si_threshold(si_threshold_power, beta):
     return si_threshold_power ** beta, si_threshold_power ** (1 - beta)
 
@@ -76,9 +89,11 @@ def sdr_si(tx_codebook_sdr, rx_codebook_sdr, si_channel):
     return si_sdr
 
 
-def codebook_deviation_power(opt_codebook, ref_codebook):
-    ref_norm2 = ref_codebook.shape[-1]   # Squared norm equals number of codebook words
-    return la.norm(opt_codebook - ref_codebook, ord="fro") ** 2 / ref_norm2
+def codebook_deviation_power(opt_codebook, ref_codebook, axis=None):
+    # Frobenius for matrix, 2-norm for vectors
+    ref_norm2 = la.norm(ref_codebook, ord=None, axis=axis) ** 2
+    # ref_norm2 = ref_codebook.shape[-1]   # Squared norm equals number of codebook words
+    return la.norm(opt_codebook - ref_codebook, ord=None, axis=axis) ** 2 / ref_norm2
 
 
 def sdr_codebook_deviation(opt_codebook_sdr, ref_codebook_gram):
@@ -87,6 +102,27 @@ def sdr_codebook_deviation(opt_codebook_sdr, ref_codebook_gram):
     norm2 = 2 * (ref_norm2 - np.sum(np.sqrt(np.trace(ref_codebook_gram @ opt_codebook_sdr,
                                                      axis1=-2, axis2=-1).real), axis=0))
     return norm2/ref_norm2
+
+
+def feasible_phased_array(codebook):
+    """
+    Projection of codebook to phased array constraints, according to LoneSTAR scaling.
+    It cannot be used for CISSIR!
+    :param codebook: Input codebook
+    :return: Phased-array codebook
+    """
+    return codebook/np.abs(codebook)
+
+
+def feasible_tapered(codebook):
+    """
+    Projection of codebook to tapered constraints, according to LoneSTAR scaling.
+    It cannot be used for CISSIR!
+    :param codebook: Input codebook
+    :return: Tapered codebook
+    """
+    n_ant = codebook.shape[0]
+    return codebook * np.sqrt(n_ant)/np.linalg.norm(codebook, axis=0, keepdims=True)
 
 
 class codebookOptimizer(ABC):
@@ -172,7 +208,11 @@ class SDRcodebook(codebookOptimizer):
             ref_param.value = ref_sdp
             x_var.value = ref_sdp
             prob.solve(**kwargs)
-            x_sdr[i,] = x_var.value
+            if prob.status == 'infeasible':
+                side = "TX" if tx else "RX"
+                raise RuntimeError(f"The {side} problem is infeasible, try increasing the target SI")
+            else:
+                x_sdr[i,] = x_var.value
 
         x_rank1 = rank1mat2vec(x_sdr).T
         x_sol = self._rotate_codebook(x_rank1, ref_cb)

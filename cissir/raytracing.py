@@ -126,3 +126,17 @@ def tx_rx_positions(N_tx, N_rx, wavelength_m, min_dist_el, transceiver_position=
     rx_position[1] -= (tx_rx_dist_el * wavelength_m)/2
 
     return tx_position, rx_position
+
+
+def si_paths2cir(si_paths, axis_path=0, transpose=(2, 0, 1)):
+
+    if axis_path is None:
+        sum_paths = si_paths
+    else:
+        sum_paths = np.sum(si_paths, axis=axis_path)
+    if transpose is None:
+        result = sum_paths
+    else:
+        result = sum_paths.transpose(*transpose)
+
+    return result
