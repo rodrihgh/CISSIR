@@ -30,9 +30,9 @@ def rank1mat2vec(mat: np.ndarray) -> np.ndarray:
 def si_split(mat):
 
     u, s, vh = la.svd(mat, full_matrices=False)    # SVD decomposition to split channel between tx and rx
-    s_abs = np.abs(s[..., None]) * np.eye(s.shape[-1])[None,]
-    mat_left = np.sum(u @ s_abs @ herm(u), axis=0)
-    mat_right = np.sum(herm(vh) @ s_abs @ vh, axis=0)
+    s = s[..., None] * np.eye(s.shape[-1])[None,]
+    mat_left = np.sum(u @ s @ herm(u), axis=0)
+    mat_right = np.sum(herm(vh) @ s @ vh, axis=0)
 
     return mat_left, mat_right
 

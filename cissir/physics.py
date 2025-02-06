@@ -3,6 +3,7 @@ Utilities for physical units and radar physics
 """
 
 import numpy as np
+from scipy.stats import hmean
 from cissir import params
 
 
@@ -26,6 +27,17 @@ def mag2db(mag_value):
 
 def pow2db(pow_value):
     return 10 * np.log10(pow_value)
+
+
+def avg_snr_noise(snr_db, axis=None):
+    """
+    Average noise for SNR values in dB with fixed signal level.
+    It computes a linear harmonic mean of SNR values.
+    :param axis: The axis along which to applay the harmonic mean.
+    :param snr_db: SNR values in dB
+    :return: SNR for average noise in dB
+    """
+    return pow2db(hmean(db2power(snr_db), axis=axis))
 
 
 def delay2distance(delay_s, two_way=True):
