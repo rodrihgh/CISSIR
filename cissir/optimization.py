@@ -348,7 +348,7 @@ def maxSdrError(cb_sdr, cb_sol):
     return max_err
 
 
-def lagrange_codebook(ref_cb, tgt_si, g_psd, si_tol=1e-2, real_tol=1e-2):
+def spectral_codebook(ref_cb, tgt_si, g_psd, si_tol=1e-2, real_tol=1e-2):
     eigvals, eigvecs = la.eigh(g_psd)
     si_levels = np.diagonal(herm(ref_cb) @ g_psd @ ref_cb).real
 
@@ -409,7 +409,7 @@ def largest_real_root(poly_coeffs, real_tol=1e-2):
     return max(roots.real)
 
 
-def feasible_eigval_lagrange(ref_cb, g_psd):
+def feasible_spectral(ref_cb, g_psd):
     eigvals, eigvecs = la.eigh(g_psd)
     q_r2 = np.abs(herm(eigvecs) @ ref_cb) ** 2
     weighted_eigval = np.sum(q_r2 / eigvals[:, None], axis=0)/np.sum(q_r2 / np.power(eigvals[:, None], 2), axis=0)

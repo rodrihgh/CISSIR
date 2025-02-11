@@ -10,5 +10,5 @@ numpy
 sionna>=0.17.0
 tqdm
 cvxpy
-tensorflow_probability
+scipy
 numba

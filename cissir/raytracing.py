@@ -9,10 +9,14 @@ import tensorflow as tf
 
 from sionna import rt
 
-from pathlib import Path
+from cissir.utils import base_path, res_path
+from cissir.optimization import codebook_si
+
+cir_path = res_path/"channel_impulse_responses.npz"
+si_mat_path = res_path/"si_mimo.npz"
 
 scene_fname = "scene.xml"
-rt_path = Path(__file__).parents[1].absolute()/"rt"
+rt_path = base_path/"rt"
 scene_path = str(rt_path/scene_fname)
 
 _paths_no_dim = ['min_tau', 'normalize_delays', 'reverse_direction', 'sources', 'targets']
@@ -140,3 +144,53 @@ def si_paths2cir(si_paths, axis_path=0, transpose=(2, 0, 1)):
         result = sum_paths.transpose(*transpose)
 
     return result
+
+
+def save_cir(ht_si, ht_tgt, t_channel_s, fname=None):
+    fname = cir_path if fname is None else fname
+    np.savez(fname, ht_si=np.array(ht_si), ht_tgt=np.array(ht_tgt), t_channel_s=np.array(t_channel_s))
+
+
+def save_si_matrix(ht_si, t_channel_s, fname=None):
+    """
+    Saves the MIMO taps of the SI channels.
+    :param ht_si: CIR of each SI path
+    :param t_channel_s: time support of ``ht_si`` in seconds
+    :param fname: Filename to save the matrix
+    :return: mean path delays in seconds
+    """
+    fname = si_mat_path if fname is None else fname
+    ht_squeeze = tf.squeeze(ht_si)
+    ht_si_abs = tf.abs(ht_squeeze)
+    mean_t = tf.reduce_sum(ht_si_abs * t_channel_s, axis=-1) / tf.reduce_sum(ht_si_abs, axis=-1)
+    t_si_matrix = tf.reduce_mean(mean_t, axis=(1, 2), keepdims=True)
+    si_indices = [np.argmin(np.abs(t_channel_s - t))
+                  for t in tf.reshape(t_si_matrix, -1)]
+    h_si_matrix = tf.stack([ht_squeeze[n, ..., i] for n, i in enumerate(si_indices)], axis=0)
+    np.savez(fname, h_si_matrix=h_si_matrix.numpy(), mean_delay=t_si_matrix.numpy())
+
+    return t_si_matrix
+
+
+def load_si_paths(num_taps, fname=None):
+    if num_taps == "full":
+        fname = cir_path if fname is None else fname
+        with np.load(fname) as rt_data:
+            t_rt = np.squeeze(rt_data['t_channel_s'])
+            h_si = np.squeeze(rt_data['ht_si'])
+    elif isinstance(num_taps, int):
+        fname = si_mat_path if fname is None else fname
+        with np.load(fname) as rt_data:
+            t_rt = np.squeeze(rt_data['mean_delay'])
+            h_si = rt_data['h_si_matrix'][:num_taps,]
+    else:
+        raise ValueError("num_taps must be either 'full' or an integer")
+
+    return h_si, t_rt
+
+
+def normalize_si_taps(h_si_taps, h_si_cir, tx_codebook, rx_codebook):
+    si_taps_mag = codebook_si(tx_codebook, rx_codebook, h_si_taps).max()
+    si_ref_mag = codebook_si(tx_codebook, rx_codebook, h_si_cir).max()
+
+    return h_si_taps * (si_ref_mag / si_taps_mag), si_ref_mag
