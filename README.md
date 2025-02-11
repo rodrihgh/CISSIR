@@ -54,7 +54,7 @@ The following order is recommended:
    3. [socp_codebook_optimization.ipynb](notebooks/socp_codebook_optimization.ipynb)
    4. [lonestar.ipynb](notebooks/lonestar.ipynb)
 3. Run the sensing evaluation [sqnr_bound.ipynb](notebooks/sqnr_bound.ipynb).
-4. Run the link-level simulations [mimo_ofdm_comm.ipynb](notebooks/mimo_ofdm_comm.ipynb).
+4. Run the link-level simulations [si_codebook_comm.ipynb](notebooks/si_codebook_comm.ipynb).
 5. Plot the curves:
    1. [plot_tradeoffs.ipynb](notebooks/plot_tradeoffs.ipynb)
    2. [plot_comm.ipynb](notebooks/plot_comm.ipynb)

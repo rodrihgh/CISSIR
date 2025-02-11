@@ -6,6 +6,7 @@ from cissir.physics import pow2db, db2mag, mag2db
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
 from sionna.utils import expand_to_rank, flatten_last_dims, split_dim
+from tensorflow.experimental import numpy as tnp
 
 rng = np.random.default_rng()
 
@@ -151,6 +152,76 @@ def dft_codebook(L_max: int, N1: int, O1=4, az_min=-60.0, az_max=60.0,
     return dft_matrix, beam_degs
 
 
+def channel_power(h_channel: tf.Tensor, axis=None, keepdims=False, name=None):
+    """
+    Compute the total power of a wireless channel
+    :param h_channel: Channel tensor
+    :param axis: Axes on which to compute the power
+    :param keepdims: Whether to keep the power dimensions
+    :param name: Tensorflow variable name
+    :return: Channel power over specified ``axis``
+    """
+    return tf.reduce_sum(tf.math.pow(tf.abs(h_channel), 2),
+                         axis=axis, keepdims=keepdims, name=name)
+
+
+class BeamSelection(Layer):
+    """
+    Select ``num_beams`` beams with the strongest channel gain for hybrid/analog transmission.
+    If ``num_rx>1``, then the strongest ``num_beams//num_rx`` beams from each user will be selected.
+    ``num_beams`` must be a multiple of ``num_rx``.
+
+    - Input: ``h_channel``
+    - Output ``h_beams``, with ``num_beams`` in the ``beam_axis`` (default axis: -3)
+
+    This class inherits from the Keras `Layer` class and can be used as layer in
+    a Keras model.
+    """
+
+    _channel_ndims = 7
+
+    def __init__(self, num_beams, normalize=True, rx_axis=None, beam_axis=None, power_axes=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        self._num_beams = num_beams
+        self._normalize = normalize
+
+        self._power_axes = _power_axes if power_axes is None else power_axes
+
+        self._beam_axis = sionna_mimo_axes("ofdm")[-1] if beam_axis is None else beam_axis
+        self._rx_axis = _rx_axis if rx_axis is None else rx_axis
+
+        self._original_axes = [self._rx_axis, self._beam_axis]
+        self._ordered_axes = [-2, -1]
+
+    def call(self, h_channel: tf.Tensor):
+
+        h_power = channel_power(h_channel, axis=self._power_axes, keepdims=True)
+
+        h_channel = tnp.moveaxis(h_channel, self._original_axes, self._ordered_axes)
+        h_power = tnp.moveaxis(h_power, self._original_axes, self._ordered_axes)
+
+        channel_shape = tf.unstack(tf.shape(h_channel))
+        num_rx = channel_shape[-2]
+        beams_per_rx = self._num_beams//num_rx
+        channel_shape[-1] = self._num_beams
+        channel_shape = tf.stack(channel_shape)
+
+        # Select `beams_per_rx` beams per user and set the same `num_beams = beams_per_rx * num_rx` for all users
+        k_beams = tf.math.top_k(h_power, k=beams_per_rx)
+        beam_indices = tf.broadcast_to(tf.repeat(tf.expand_dims(flatten_last_dims(k_beams.indices, num_dims=2),
+                                                                axis=-2), num_rx, axis=-2), channel_shape)
+
+        output = tf.gather(h_channel, beam_indices, batch_dims=-1)
+        output = tnp.moveaxis(output, self._ordered_axes, self._original_axes)
+
+        if self._normalize:
+            output /= tf.sqrt(tf.cast(self._num_beams, dtype=output.dtype))
+
+        return output
+
+
 class Beamspace(Layer):
     r"""
 
@@ -220,3 +291,9 @@ def sionna_mimo_axes(channel: str):
                  "time": (-5, -3)}
 
     return mimo_dict[channel]
+
+
+_rx_axis = 1
+
+# [num_rx_ant, num_ofdm_symbols, fft_size]
+_power_axes = (2, 5, 6)
