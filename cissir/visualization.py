@@ -65,14 +65,14 @@ def inline_annotation(x, y, text, x_label=None, y_label=None, rotation="curve",
               rotation=rotation_deg, **kwargs)
 
 
-def save(fig, fname, dir=None, format="pgf", bbox_inches='tight', **kwargs):
+def save(fig, fname, save_dir=None, save_format="pgf", bbox_inches='tight', **kwargs):
     if isinstance(fname, Path) or "/" in fname:
         save_path = fname
-    elif dir is not None:
-        save_path = dir/Path(fname)
+    elif save_dir is not None:
+        save_path = save_dir / Path(fname)
     else:
         save_path = plot_path/fname
-    if "." not in format:
-        format = "." + format
+    if "." not in save_format:
+        save_format = "." + save_format
 
-    fig.savefig(save_path.with_suffix(format), bbox_inches=bbox_inches, **kwargs)
+    fig.savefig(save_path.with_suffix(save_format), bbox_inches=bbox_inches, **kwargs)
