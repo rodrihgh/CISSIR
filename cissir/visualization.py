@@ -3,6 +3,8 @@ from cycler import cycler
 import numpy as np
 import matplotlib.pyplot as plt
 
+from cissir.utils import Path, plot_path
+
 # Color shortcuts
 b = "#5c8acf"   # Blue
 g = "#88CDA2"   # Green
@@ -61,3 +63,16 @@ def inline_annotation(x, y, text, x_label=None, y_label=None, rotation="curve",
               bbox=dict(facecolor=background_color, alpha=background_alpha,
                         edgecolor=None, boxstyle="Round,pad=0.0"),
               rotation=rotation_deg, **kwargs)
+
+
+def save(fig, fname, dir=None, format="pgf", bbox_inches='tight', **kwargs):
+    if isinstance(fname, Path) or "/" in fname:
+        save_path = fname
+    elif dir is not None:
+        save_path = dir/Path(fname)
+    else:
+        save_path = plot_path/fname
+    if "." not in format:
+        format = "." + format
+
+    fig.savefig(save_path.with_suffix(format), bbox_inches=bbox_inches, **kwargs)

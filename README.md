@@ -76,6 +76,7 @@ The following order is recommended:
 4. Analyze and plot the results with the [analysis notebooks](notebooks/analysis):
    6. [link_level.ipynb](notebooks/analysis/link_level.ipynb)
    7. [trade_off.ipynb](notebooks/analysis/trade_off.ipynb)
+   8. [time_complexity.ipynb](notebooks/analysis/time_complexity.ipynb)
 
 ## Citation
 
