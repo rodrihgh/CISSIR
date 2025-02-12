@@ -77,6 +77,7 @@ The following order is recommended:
    6. [link_level.ipynb](notebooks/analysis/link_level.ipynb)
    7. [trade_off.ipynb](notebooks/analysis/trade_off.ipynb)
    8. [time_complexity.ipynb](notebooks/analysis/time_complexity.ipynb)
+   9. [feasibility.ipynb](notebooks/analysis/feasibility.ipynb)
 
 ## Citation
 

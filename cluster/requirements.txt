@@ -4,6 +4,7 @@ ipykernel>6.0
 drjit==0.4.3
 mitsuba==3.4.0
 matplotlib
+ipympl
 pandas
 seaborn
 numpy
