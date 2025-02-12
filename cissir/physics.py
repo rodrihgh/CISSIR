@@ -33,7 +33,7 @@ def avg_snr_noise(snr_db, axis=None):
     """
     Average noise for SNR values in dB with fixed signal level.
     It computes a linear harmonic mean of SNR values.
-    :param axis: The axis along which to applay the harmonic mean.
+    :param axis: The axis along which to apply the harmonic mean.
     :param snr_db: SNR values in dB
     :return: SNR for average noise in dB
     """

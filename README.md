@@ -27,10 +27,28 @@ Full Python dependencies in the [requirements.txt](cluster/requirements.txt) fil
 - [Pandas](https://pandas.pydata.org/)
 - [Seaborn](https://seaborn.pydata.org/)
 
+### Installation
+
+1. Install the requirements with [conda](https://docs.conda.io/projects/conda/en/stable/commands/install.html)
+or [pip](https://pip.pypa.io/en/stable/cli/pip_install/). We recommend using a virtual environment for this.
+2. To execute the [notebooks](notebooks), we recommend adding the project root to the `PYTHONPATH` so that the
+[cissir](cissir) module is accessible everywhere. You can simply create an ad-hoc ipykernel with the proper
+`PYTHONPATH` by running the following in the project root:
+* In Unix:
+```shell
+python -m ipykernel install --sys-prefix --name cissir --display-name "CISSIR (python 3)" --env PYTHONPATH "${PYTHONPATH}:${PWD}"
+```     
+* In [Git Bash](https://gitforwindows.org/) for Windows:
+```shell
+python -m ipykernel install --sys-prefix --name cissir --display-name "CISSIR (python 3)" --env PYTHONPATH "${PYTHONPATH};$(pwd -W)"
+```     
+
+Afterwards, you can just execute `jupyter lab` and run the notebooks with the "CISSIR" kernel.
+
 ## Structure
 
 - [cissir](cissir) - Local Python modules.
-- [rt](rt) - Blender scene files for
+- [rt](rt) - [Blender](https://www.blender.org/) scene files for
 [Sionna's Ray Tracer](https://nvlabs.github.io/sionna/api/rt.html). 
   - Developed with the help of
   [Danial Dehghani](https://www.linkedin.com/in/danial-dehghani/).
@@ -46,15 +64,21 @@ execution on an [HPC GPU Cluster](https://www.nvidia.com/en-us/glossary/high-per
 The code can be directly used through [Jupyter notebooks](notebooks).
 The following order is recommended:
 
-0. Adjust the simulation parameters in [params.py](cissir/params.py).
-1. Run the [channel_simulator.ipynb](notebooks/channel_simulator.ipynb).
-2. Run any of the following optimization notebooks:
-   1. [lagrange_codebook_optimization.ipynb](notebooks/lagrange_codebook_optimization.ipynb)
-   2. [sdr_codebook_optimization.ipynb](notebooks/sdr_codebook_optimization.ipynb)
-   3. [socp_codebook_optimization.ipynb](notebooks/socp_codebook_optimization.ipynb)
-   4. [lonestar.ipynb](notebooks/lonestar.ipynb)
-3. Run the sensing evaluation [sqnr_bound.ipynb](notebooks/sqnr_bound.ipynb).
-4. Run the link-level simulations [si_codebook_comm.ipynb](notebooks/si_codebook_comm.ipynb).
-5. Plot the curves:
-   1. [plot_tradeoffs.ipynb](notebooks/plot_tradeoffs.ipynb)
-   2. [plot_comm.ipynb](notebooks/plot_comm.ipynb)
+0. Adjust the simulation parameters in [cissir/params.py](cissir/params.py).
+1. Simulate the channel in [simulation/channel.ipynb](notebooks/simulation/channel.ipynb).
+2. Run any of the following [optimization notebooks](notebooks/simulation):
+   1. [tapered_cissir.ipynb](notebooks/optimization/tapered_cissir.ipynb)
+   2. [phased_cissir.ipynb](notebooks/optimization/phased_cissir.ipynb)
+   3. [lonestar.ipynb](notebooks/optimization/lonestar.ipynb)
+3. Run the simulations:
+   4. [snr_sensing.ipynb](notebooks/simulation/snr_sensing.ipynb).
+   5. [si_codebook_comm.ipynb](notebooks/simulation/si_codebook_comm.ipynb).
+4. Analyze and plot the results with the [analysis notebooks](notebooks/analysis):
+   6. [link_level.ipynb](notebooks/analysis/link_level.ipynb)
+   7. [trade_off.ipynb](notebooks/analysis/trade_off.ipynb)
+
+## Citation
+
+_TODO submission in progress_
+   
+---

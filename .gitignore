@@ -1,1 +1,3 @@
 *.jupyterlab-workspace
+results/**
+plots/**
