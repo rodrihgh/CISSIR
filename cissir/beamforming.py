@@ -210,8 +210,8 @@ class BeamSelection(Layer):
 
         # Select `beams_per_rx` beams per user and set the same `num_beams = beams_per_rx * num_rx` for all users
         k_beams = tf.math.top_k(h_power, k=beams_per_rx)
-        beam_indices = tf.broadcast_to(tf.repeat(tf.expand_dims(flatten_last_dims(k_beams.indices, num_dims=2),
-                                                                axis=-2), num_rx, axis=-2), channel_shape)
+        beam_indices = tf.broadcast_to(tf.expand_dims(flatten_last_dims(k_beams.indices,
+                                                                        num_dims=2), axis=-2), channel_shape)
 
         output = tf.gather(h_channel, beam_indices, batch_dims=-1)
         output = tnp.moveaxis(output, self._ordered_axes, self._original_axes)
