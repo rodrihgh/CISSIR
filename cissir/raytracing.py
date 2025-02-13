@@ -141,7 +141,7 @@ def si_paths2cir(si_paths, axis_path=0, transpose=(2, 0, 1)):
     if transpose is None:
         result = sum_paths
     else:
-        result = sum_paths.transpose(*transpose)
+        result = np.squeeze(sum_paths).transpose(*transpose)
 
     return result
 
@@ -172,24 +172,41 @@ def save_si_matrix(ht_si, t_channel_s, fname=None):
     return t_si_matrix
 
 
+def load_data(*args, fname=cir_path, tf_type=None, **kwargs):
+    with np.load(fname) as rt_data:
+        data = [rt_data[arg] for arg in args]
+    if tf_type is not None:
+        data = [tf.constant(d, dtype=tf_type, **kwargs) for d in data]
+    if len(data) == 1:
+        return data[0]
+    elif len(data) > 1:
+        return data
+    else:
+        raise ValueError("At least one positional argument should be given")
+
+
+def load_cir(*args, fname=cir_path, tf_type=tf.complex64, **kwargs):
+    return load_data(*args, fname=fname, tf_type=tf_type, **kwargs)
+
+
 def load_si_paths(num_taps, fname=None):
     if num_taps == "full":
         fname = cir_path if fname is None else fname
-        with np.load(fname) as rt_data:
-            t_rt = np.squeeze(rt_data['t_channel_s'])
-            h_si = np.squeeze(rt_data['ht_si'])
+        h_si, t_rt = load_data("ht_si", "t_channel_s", fname=fname)
     elif isinstance(num_taps, int):
         fname = si_mat_path if fname is None else fname
-        with np.load(fname) as rt_data:
-            t_rt = np.squeeze(rt_data['mean_delay'])
-            h_si = rt_data['h_si_matrix'][:num_taps,]
+        h_si, t_rt = [data[:num_taps] for data in
+                      load_data("h_si_matrix", "mean_delay", fname=fname)]
     else:
         raise ValueError("num_taps must be either 'full' or an integer")
 
     return h_si, t_rt
 
 
-def normalize_si_taps(h_si_taps, h_si_cir, tx_codebook, rx_codebook):
+def normalize_si_taps(h_si_taps, h_si_full, tx_codebook, rx_codebook, num_taps=None):
+    if num_taps is None:
+        num_taps = h_si_taps.shape[0]
+    h_si_cir = si_paths2cir(h_si_full[:num_taps])
     si_taps_mag = codebook_si(tx_codebook, rx_codebook, h_si_taps).max()
     si_ref_mag = codebook_si(tx_codebook, rx_codebook, h_si_cir).max()
 
