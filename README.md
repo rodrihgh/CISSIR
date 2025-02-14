@@ -89,13 +89,13 @@ The following order is recommended:
    2. [phased_cissir.ipynb](notebooks/optimization/phased_cissir.ipynb)
    3. [lonestar.ipynb](notebooks/optimization/lonestar.ipynb)
 3. Run the simulations:
-   4. [snr_sensing.ipynb](notebooks/simulation/snr_sensing.ipynb).
-   5. [si_codebook_comm.ipynb](notebooks/simulation/si_codebook_comm.ipynb).
+   1. [snr_sensing.ipynb](notebooks/simulation/snr_sensing.ipynb).
+   2. [si_codebook_comm.ipynb](notebooks/simulation/si_codebook_comm.ipynb).
 4. Analyze and plot the results with the [analysis notebooks](notebooks/analysis):
-   6. [link_level.ipynb](notebooks/analysis/link_level.ipynb)
-   7. [trade_off.ipynb](notebooks/analysis/trade_off.ipynb)
-   8. [time_complexity.ipynb](notebooks/analysis/time_complexity.ipynb)
-   9. [feasibility.ipynb](notebooks/analysis/feasibility.ipynb)
+   1. [link_level.ipynb](notebooks/analysis/link_level.ipynb)
+   2. [trade_off.ipynb](notebooks/analysis/trade_off.ipynb)
+   3. [time_complexity.ipynb](notebooks/analysis/time_complexity.ipynb)
+   4. [feasibility.ipynb](notebooks/analysis/feasibility.ipynb)
 
 ## Citation
 
