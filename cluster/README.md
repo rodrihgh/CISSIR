@@ -19,6 +19,14 @@ Navigate to the project's root directory in the command line and run:
 apptainer build --fakeroot --force cluster/sionna.sif cluster/sionna.def
 ```
 
+Alternatively, you can pull the built container from GitHub Container Registry:
+
+```shell
+docker pull ghcr.io/rodrihgh/cissir/sionna.sif:v1
+```
+
+
+
 [More information on Apptainer container creation](https://docs.sylabs.io/guides/3.0/user-guide/build_a_container.html)
 
 ## Usage
