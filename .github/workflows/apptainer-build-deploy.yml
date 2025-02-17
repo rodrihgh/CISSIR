@@ -32,7 +32,7 @@ jobs:
         run: |
           echo "Repository name: ${{github.repository}}"
           echo "Repository owner: ${{github.repository_owner}}"
-          echo "Tag name: ${tag}"
+          echo "Tag name: ${{github.ref_name}}"
 
       - name: Build Container
         run: |
@@ -41,4 +41,4 @@ jobs:
       - name: Login and Deploy Container
         run: |
            echo ${{ secrets.GITHUB_TOKEN }} | apptainer registry login -u ${{github.repository_owner}} --password-stdin oras://ghcr.io
-           apptainer push cluster/sionna.sif oras://ghcr.io/${{github.repository}}/sionna.sif:${tag}
+           apptainer push cluster/sionna.sif oras://ghcr.io/${{github.repository}}/sionna.sif:${{github.ref_name}}
