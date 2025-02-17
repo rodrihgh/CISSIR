@@ -3,6 +3,8 @@ name: Apptainer Build Deploy
 on:
   workflow_dispatch:
   push:
+    tags:
+      - '*'
     paths:
       - "**.def"
       - "**.sh"
