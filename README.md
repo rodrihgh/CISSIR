@@ -10,21 +10,24 @@
 
 [sionna]: https://nvlabs.github.io/sionna/
 [cvxpy]: https://www.cvxpy.org/
+[paper]: https://arxiv.org/abs/2502.10371
 
-Software repository for **Codebooks with Integral-Split Self-Interference Reduction**
-(**CISSIR**, pronounced like "scissor").
+Software for **Codebooks with Integral-Split Self-Interference Reduction**
+(**CISSIR**, pronounced like "scissor"). This repository serves as supplementary material for the following work,
+which has been submitted to the IEEE for possible publication:
+
+[CISSIR: Beam Codebooks with Self-Interference Reduction Guarantees for Integrated Sensing and Communication Beyond 5G][paper]
+
+![CISSIR diagram](pics/cissir_diagram.svg)
+
+## Main features
 
 CISSIR is a principled design method
 for analog or hybrid beam codebooks with **reduced self-interference (SI)**.
 As such, CISSIR codebooks can be used as a replacement of
 **5G-NR beam codebooks** to enable
 [integrated sensing and communication (ISAC)](https://isac.committees.comsoc.org/).
-
-_TODO: Paper submission in progress._
-
-![CISSIR diagram](pics/cissir_diagram.svg)
-
-### Main features
+Its principal features include:
 
 - :memo: Theoretical performance guarantees for sensing SNR in the face of analog/mixed-signal distortion.
 - :zap: Better performance[^1] and faster[^2] than other available codebooks.
@@ -99,6 +102,21 @@ The following order is recommended:
 
 ## Citation
 
-_TODO submission in progress_
+If you use this software or the results of [our work][paper], please cite it as:
+
+```bibtex
+@article{hernangomez2025cissir,
+  title = {{{CISSIR}}: {{Beam Codebooks}} with {{Self-Interference Reduction Guarantees}} for {{Integrated Sensing}} and {{Communication Beyond 5G}}},
+  author = {Hernang{\'o}mez, Rodrigo and Fink, Jochen and Cavalcante, Renato L. G. and Sta{\'n}czak, S{\l}awomir},
+  year = {2025},
+  month = feb,
+  journal = {arXiv preprint},
+  online = {https://arxiv.org/abs/2502.10371},
+  eprint = {2502.10371},
+  doi = {10.48550/arXiv.2502.10371},
+  urldate = {2025-02-17},
+  archiveprefix = {arXiv},
+}
+```
    
 ---
