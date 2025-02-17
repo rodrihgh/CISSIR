@@ -1,0 +1,36 @@
+name: Apptainer Build Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "**.def"
+      - "**.sh"
+      - "**.yml"
+      - "**/requirements.txt"
+
+jobs:
+  build-test-container:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    container:
+        image: quay.io/singularity/singularity:v4.1.0
+        options: --privileged
+
+    name: Build Container
+    steps:
+
+      - name: Check out code for the container builds
+        uses: actions/checkout@v4
+
+      - name: Build Container
+        run: |
+           singularity build --fakeroot --force cluster/sionna.sif cluster/sionna.def
+
+      - name: Login and Deploy Container
+        run: |
+           echo ${{ secrets.GITHUB_TOKEN }} | singularity remote login -u ${{ secrets.GHCR_USERNAME }} --password-stdin oras://ghcr.io
+           singularity push cluster/sionna.sif oras://ghcr.io/${GITHUB_REPOSITORY}:${tag}
