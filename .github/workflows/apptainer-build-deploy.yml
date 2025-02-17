@@ -28,7 +28,7 @@ jobs:
 
       - name: Build Container
         run: |
-           singularity build --fakeroot --force cluster/sionna.sif cluster/sionna.def
+           singularity build cluster/sionna.sif cluster/sionna.def
 
       - name: Login and Deploy Container
         run: |
