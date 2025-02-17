@@ -26,6 +26,11 @@ jobs:
       - name: Check out code for the container builds
         uses: actions/checkout@v4
 
+      - name: Print environment variables
+        run: |
+          echo "Repository name: $GITHUB_REPOSITORY"
+          echo "Branch name: $GITHUB_REF"
+
       - name: Build Container
         run: |
            singularity build cluster/sionna.sif cluster/sionna.def
