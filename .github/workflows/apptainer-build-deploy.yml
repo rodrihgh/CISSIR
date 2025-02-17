@@ -32,5 +32,5 @@ jobs:
 
       - name: Login and Deploy Container
         run: |
-           echo ${{ secrets.GITHUB_TOKEN }} | singularity remote login -u ${{ secrets.GHCR_USERNAME }} --password-stdin oras://ghcr.io
-           singularity push cluster/sionna.sif oras://ghcr.io/${GITHUB_REPOSITORY}:${tag}
+           echo ${{ secrets.GITHUB_TOKEN }} | singularity remote login -u ${GITHUB_REPOSITORY_OWNER} --password-stdin oras://ghcr.io
+           singularity push cluster/sionna.sif oras://ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_REF}
