@@ -99,6 +99,16 @@ The following order is recommended:
    2. [trade_off.ipynb](notebooks/analysis/trade_off.ipynb)
    3. [time_complexity.ipynb](notebooks/analysis/time_complexity.ipynb)
    4. [feasibility.ipynb](notebooks/analysis/feasibility.ipynb)
+  
+## Acknowledgment
+
+The authors of this work acknowledge the financial support by the [Federal Ministry of Education and Research of Germany (BMBF)](https://www.bmbf.de/EN)
+in the programme [“Souverän. Digital. Vernetzt.”](https://www.bmbf.de/SharedDocs/Publikationen/DE/5/31677_Souveraen_Digital_Vernetzt.html)
+Joint project [6G-RIC](https://6g-ric.de) (grant numbers: 16KISK020K, 16KISK030).
+[Rodrigo Hernangómez](https://github.com/rodrihgh)
+acknowledges BMBF support in the project [KOMSENS-6G](https://www.komsens-6g.com/) (grant number: 16KISK121).
+
+_The CISSIR logo has been designed by [Risto Avramovski](https://ristoavramovski.com/)._
 
 ## Citation
 
@@ -114,7 +124,6 @@ If you use this software or the results of [our work][paper], please cite it as:
   online = {https://arxiv.org/abs/2502.10371},
   eprint = {2502.10371},
   doi = {10.48550/arXiv.2502.10371},
-  urldate = {2025-02-17},
   archiveprefix = {arXiv},
 }
 ```
