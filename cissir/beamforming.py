@@ -15,6 +15,8 @@ num_q_phases = 64
 num_q_amps = 64
 db_step = 0.5
 
+beam_oversampling = 4
+
 
 def steer_vec(n_elements, thetas_rad, electric_length=0.5, centered=False):
     """
@@ -122,7 +124,7 @@ def dft_beamforming(steer_index, n_antennas, oversampling=4, transmit=True, norm
     return vec
 
 
-def dft_codebook(L_max: int, N1: int, O1=4, az_min=-60.0, az_max=60.0,
+def dft_codebook(L_max: int, N1: int, O1=beam_oversampling, az_min=-60.0, az_max=60.0,
                  transmit=True, full_grid=False, random_angles=False):
     """
     Generate codebook according to 3GPP DFT beamforming
@@ -180,20 +182,44 @@ class BeamSelection(Layer):
 
     _channel_ndims = 7
 
-    def __init__(self, num_beams, normalize=True, rx_axis=None, beam_axis=None, power_axes=None, **kwargs):
+    def __init__(self, num_beams, oversampling=beam_oversampling, orthogonal=True,
+                 normalize=True, beam_axis=None, power_axes=None, **kwargs):
 
         super().__init__(**kwargs)
 
         self._num_beams = num_beams
+        self._o1 = oversampling
         self._normalize = normalize
 
         self._power_axes = _power_axes if power_axes is None else power_axes
 
         self._beam_axis = sionna_mimo_axes("ofdm")[-1] if beam_axis is None else beam_axis
-        self._rx_axis = _rx_axis if rx_axis is None else rx_axis
 
-        self._original_axes = [self._rx_axis, self._beam_axis]
-        self._ordered_axes = [-2, -1]
+        self._original_axes = [self._beam_axis]
+        self._ordered_axes = [-1]
+        self._orthogonal = orthogonal and num_beams > 1
+
+    def _simple_selection(self, beam_power: tf.Tensor):
+        return tf.math.top_k(beam_power, k=self._num_beams).indices
+
+    def _ortho_selection(self, beam_power: tf.Tensor):
+        """
+        Orthogonal beam selection based on Algorithm 1 in
+        'A Tutorial on Downlink Precoder Selection Strategies for 3GPP MIMO Codebooks' (Fu et al., 2023)
+        :param beam_power: Power for each beam, aggregated over users and resources
+        :return: orthogonal indices with max power
+        """
+
+        cb_size = tf.unstack(tf.shape(beam_power))[-1]
+        pad_size = self._o1 * tf.cast(tf.math.ceil(cb_size / self._o1), dtype=cb_size.dtype) - cb_size
+        paddings = tf.concat([tf.zeros([beam_power.ndim-1, 2], dtype=pad_size.dtype),
+                              tf.reshape([0, pad_size], [1, 2])], axis=0)
+        beam_pow_pad = tf.pad(beam_power, paddings, constant_values=-1)
+
+        beam_max = tf.math.top_k(beam_power, k=1)
+        beam_q = tf.math.mod(beam_max.indices, self._o1)
+        ortho_beams = tf.gather(beam_pow_pad, beam_q + tf.range(cb_size, delta=self._o1), batch_dims=-1)
+        return self._o1 * tf.math.top_k(ortho_beams, k=self._num_beams).indices + beam_q
 
     def call(self, h_channel: tf.Tensor):
 
@@ -203,17 +229,11 @@ class BeamSelection(Layer):
         h_power = tnp.moveaxis(h_power, self._original_axes, self._ordered_axes)
 
         channel_shape = tf.unstack(tf.shape(h_channel))
-        num_rx = channel_shape[-2]
-        beams_per_rx = self._num_beams//num_rx
         channel_shape[-1] = self._num_beams
         channel_shape = tf.stack(channel_shape)
 
-        # Select `beams_per_rx` beams per user and set the same `num_beams = beams_per_rx * num_rx` for all users
-        k_beams = tf.math.top_k(h_power, k=beams_per_rx)
-        beam_indices = tf.broadcast_to(tf.expand_dims(flatten_last_dims(k_beams.indices,
-                                                                        num_dims=2), axis=-2), channel_shape)
-
-        output = tf.gather(h_channel, beam_indices, batch_dims=-1)
+        beam_indices = self._ortho_selection(h_power) if self._orthogonal else self._simple_selection(h_power)
+        output = tf.gather(h_channel, tf.broadcast_to(beam_indices, channel_shape), batch_dims=-1)
         output = tnp.moveaxis(output, self._ordered_axes, self._original_axes)
 
         if self._normalize:
@@ -293,7 +313,6 @@ def sionna_mimo_axes(channel: str):
     return mimo_dict[channel]
 
 
-_rx_axis = 1
-
-# [num_rx_ant, num_ofdm_symbols, fft_size]
-_power_axes = (2, 5, 6)
+# full channel dimensions: [batch size, num_rx, num_rx_ant, num_tx, num_tx_ant, num_ofdm_symbols, fft_size]
+# [num_rx, num_rx_ant, num_ofdm_symbols, fft_size]
+_power_axes = (1, 2, 5, 6)
