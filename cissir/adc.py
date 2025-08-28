@@ -3,9 +3,10 @@ Functions for ADC quantization noise
 author: Danial Dehghani, Rodrigo Hernangomez
 """
 
+import numpy as np
 import pandas as pd
 import tensorflow as tf
-from cissir.physics import db2mag
+from cissir.physics import db2mag, db2power, c0
 
 
 def abs_complex_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -98,3 +99,15 @@ def sqnr_bound(si2target_db, target1norm, target2norm, num_bits,
     if snr is not None:
         sqnr = 1/(1/sqnr + 1/snr)
     return sqnr
+
+
+def crlb_range(snr_db, bandwidth_hz):
+    """Compute the Cramer-Rao Lower Bound for range estimation as per
+    Chapter 18.4.3 in (Richards et al., 2010).
+    :param snr_db: Signal-to-Noise Ratio in dB
+    :param bandwidth_hz: Bandwidth in Hz
+    :return: CRLB in square meters
+    """
+    snr = db2power(snr_db)
+    bw_rms = bandwidth_hz * np.pi/np.sqrt(3)
+    return ((c0/bw_rms)**2)/(4*snr)

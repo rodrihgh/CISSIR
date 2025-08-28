@@ -2,6 +2,7 @@ import seaborn as sns
 from cycler import cycler
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 from cissir.utils import Path, plot_path
 
@@ -63,6 +64,43 @@ def inline_annotation(x, y, text, x_label=None, y_label=None, rotation="curve",
               bbox=dict(facecolor=background_color, alpha=background_alpha,
                         edgecolor=None, boxstyle="Round,pad=0.0"),
               rotation=rotation_deg, **kwargs)
+
+
+def _myLogFormat(y, pos):
+    mant_ticks = [1, 2, 3, 5, 7]
+    # Find the number of decimal places required
+    log_y = np.log10(y)
+    ord_mag = np.floor(log_y).astype(int)
+    mantissa = np.round(np.power(10, log_y - ord_mag), 1)
+    if mantissa in mant_ticks:
+        # Insert that number into a format string
+        decimalplaces = np.maximum(-ord_mag, 0)  # =0 for numbers >=1
+        formatstring = '{{:.{:1d}f}}'.format(decimalplaces)
+        # Return the formatted tick label
+        return formatstring.format(y)
+    else:
+        return ''
+
+
+def format_log_ticks(axis, which='both', minor=True):
+    if which == 'both':
+        axis.xaxis.set_major_formatter(ticker.FuncFormatter(_myLogFormat))
+        axis.yaxis.set_major_formatter(ticker.FuncFormatter(_myLogFormat))
+        if minor:
+            axis.xaxis.set_minor_formatter(ticker.FuncFormatter(_myLogFormat))
+            axis.yaxis.set_minor_formatter(ticker.FuncFormatter(_myLogFormat))
+    elif which == 'x':
+        axis.xaxis.set_major_formatter(ticker.FuncFormatter(_myLogFormat))
+        if minor:
+            axis.xaxis.set_minor_formatter(ticker.FuncFormatter(_myLogFormat))
+    elif which == 'y':
+        axis.yaxis.set_major_formatter(ticker.FuncFormatter(_myLogFormat))
+        if minor:
+            axis.yaxis.set_minor_formatter(ticker.FuncFormatter(_myLogFormat))
+    else:
+        raise ValueError("Invalid value for 'which': {}".format(which))
+
+    return
 
 
 def save(fig, fname, save_dir=None, save_format="pgf", bbox_inches='tight', **kwargs):
