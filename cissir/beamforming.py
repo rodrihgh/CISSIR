@@ -68,12 +68,13 @@ def array_factor(antenna_weights, thetas_radian, n_antennas=None, transmit=True)
 
 
 def plot_beamforming_polar(bf_vectors, transmit=True, element_pattern=None, color_palette=None,
-                           r_lim=(-30, None), theta_lim=None, axis=None, **kwargs):
+                           r_lim=(-30, None), theta_lim=None, axis=None, aggregate=False, fill=False,  **kwargs):
     if axis is None:
         fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
     else:
         ax = axis
         fig = ax.get_figure()
+    plot_f = ax.plot if not fill else ax.fill
     ax.set_theta_zero_location("N")
 
     r_min, r_max = r_lim
@@ -92,6 +93,7 @@ def plot_beamforming_polar(bf_vectors, transmit=True, element_pattern=None, colo
         el_pat_db = pow2db([element_pattern(d) for d in thetas_eval])
 
     r_max_bf = []
+    agg = []
     colors = None if color_palette is None else sns.color_palette(color_palette, n_colors=bf_vectors.shape[-1])
     for n, bf_vec in enumerate(bf_vectors.T):
         if colors is not None:
@@ -99,7 +101,13 @@ def plot_beamforming_polar(bf_vectors, transmit=True, element_pattern=None, colo
         bf = array_factor(bf_vec, thetas_eval, transmit=transmit)
         bf_db = pow2db(np.abs(bf)**2) + el_pat_db
         r_max_bf.append(max(bf_db))
-        ax.plot(thetas_eval, bf_db, **kwargs)
+        if aggregate:
+            agg.append(bf_db)
+        else:
+            plot_f(thetas_eval, bf_db, **kwargs)
+    if aggregate:
+        bf_db = np.max(np.stack(agg, axis=-1), axis=-1)
+        plot_f(thetas_eval, bf_db, **kwargs)
 
     if r_max is None:
         r_max = np.max(r_max_bf) + 1
