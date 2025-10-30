@@ -12,9 +12,8 @@
 [cvxpy]: https://www.cvxpy.org/
 [paper]: https://arxiv.org/abs/2502.10371
 
-Software for **Codebooks with Integral-Split Self-Interference Reduction**
-(**CISSIR**, pronounced like "scissor"). This repository serves as supplementary material for the following work,
-which has been submitted to the IEEE for possible publication:
+Software and supplemertary material for **Codebooks with Integral-Split Self-Interference Reduction**
+(**CISSIR**, pronounced like "scissor"). Please refer to the associated IEEE Transactions Journal Paper:
 
 [CISSIR: Beam Codebooks with Self-Interference Reduction Guarantees for Integrated Sensing and Communication Beyond 5G][paper]
 
@@ -22,16 +21,15 @@ which has been submitted to the IEEE for possible publication:
 
 ## Main features
 
-CISSIR is a principled design method
-for analog or hybrid beam codebooks with **reduced self-interference (SI)**.
-As such, CISSIR codebooks can be used as a replacement of
-**5G-NR beam codebooks** to enable
+CISSIR extends **5G-NR beam codebooks** with a principled **low self-interference (SI)** design
+to enable
 [integrated sensing and communication (ISAC)](https://isac.committees.comsoc.org/).
-Its principal features include:
+CISSIR's main features include:
 
+- :hammer_and_wrench: High versatility: Suitable for hybrid or analog, phased or tapered beamforming, even under multipath SI.
 - :memo: Theoretical performance guarantees for sensing SNR in the face of analog/mixed-signal distortion.
 - :zap: Better performance[^1] and faster[^2] than other available codebooks.
-- :busts_in_silhouette: Easily (re)usable and extendable
+- :arrows_counterclockwise: Easily (re)usable and extendable
     -  Entirely written in [Python](https://www.python.org/)
     -  Built on top of popular open-source libraries like [sionna] and [cvxpy].
 
@@ -102,8 +100,9 @@ The following order is recommended:
   
 ## Acknowledgment
 
-The authors of this work acknowledge the financial support by the [Federal Ministry of Education and Research of Germany (BMBF)](https://www.bmbf.de/EN)
-in the programme [“Souverän. Digital. Vernetzt.”](https://www.bmbf.de/SharedDocs/Publikationen/DE/5/31677_Souveraen_Digital_Vernetzt.html)
+The authors of this work acknowledge the financial support by the
+[Federal Ministry for Research, Technology and Space (BMFTR)](https://www.bmftr.bund.de/EN/)
+in the programme [“Souverän. Digital. Vernetzt.”](https://www.bmftr.bund.de/SharedDocs/Publikationen/DE/5/31677_Souveraen_Digital_Vernetzt.html)
 Joint project [6G-RIC](https://6g-ric.de) (grant numbers: 16KISK020K, 16KISK030).
 [Rodrigo Hernangómez](https://github.com/rodrihgh)
 acknowledges BMBF support in the project [KOMSENS-6G](https://www.komsens-6g.com/) (grant number: 16KISK121).
@@ -119,12 +118,9 @@ If you use this software or the results of [our work][paper], please cite it as:
   title = {{{CISSIR}}: {{Beam Codebooks}} with {{Self-Interference Reduction Guarantees}} for {{Integrated Sensing}} and {{Communication Beyond 5G}}},
   author = {Hernang{\'o}mez, Rodrigo and Fink, Jochen and Cavalcante, Renato L. G. and Sta{\'n}czak, S{\l}awomir},
   year = {2025},
-  month = feb,
-  journal = {arXiv preprint},
+  journal = {IEEE Transactions on Wireless Communications},
   online = {https://arxiv.org/abs/2502.10371},
-  eprint = {2502.10371},
   doi = {10.48550/arXiv.2502.10371},
-  archiveprefix = {arXiv},
 }
 ```
    
