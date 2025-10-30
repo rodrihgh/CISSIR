@@ -1,14 +1,14 @@
 jupyterlab>=3.0
 notebook
 ipykernel>6.0
-drjit==0.4.3
-mitsuba==3.4.0
+drjit>=1.2
+mitsuba>=3.4
 matplotlib
 ipympl
 pandas
 seaborn
 numpy
-sionna>=0.17.0
+sionna==1.2
 tqdm
 cvxpy
 scipy
