@@ -1,4 +1,4 @@
-from sionna import constants
+from sionna.phy import constants
 
 # CONSTANTS
 c = constants.SPEED_OF_LIGHT
