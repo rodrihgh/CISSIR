@@ -36,6 +36,7 @@ jobs:
 
       - name: Build Container
         run: |
+           rm cluster/*.sif
            apptainer build cluster/sionna.sif cluster/sionna.def
 
       - name: Login and Deploy Container
