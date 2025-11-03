@@ -8,7 +8,7 @@ ipympl
 pandas
 seaborn
 numpy
-sionna>=0.17.0
+sionna==0.17.0
 tqdm
 cvxpy
 scipy
