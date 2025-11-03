@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: tensorflow/tensorflow:2.19.0-gpu
+From: tensorflow/tensorflow:2.16.1-gpu
 
 %environment
 
@@ -20,7 +20,7 @@ From: tensorflow/tensorflow:2.19.0-gpu
     apt update -y
     apt dist-upgrade -y
 
-    apt install -y llvm
+    apt install -y llvm python3-pip
     apt install -y dvipng texlive-latex-extra texlive-fonts-recommended cm-super # Install LaTex for plots
 
     pip install --upgrade pip

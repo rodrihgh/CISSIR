@@ -32,6 +32,7 @@ def set_scattering(scattering_coefficients: dict, scene: rt.Scene) -> None:
 
 
 def remove_zero_paths(path_dict):
+    print("Warning: remove_zero_paths is deprecated.")
     # Remove null paths
     paths_a = path_dict['a']
     path_mask = tf.reduce_any(tf.abs(paths_a) > 0.0,
@@ -53,6 +54,7 @@ def remove_zero_paths(path_dict):
 
 
 def concatenate_paths(path_dicts: List[Dict], zero_paths=False):
+    print("Warning: concatenate_paths is deprecated.")
     if not zero_paths:
         path_dicts = [remove_zero_paths(p) for p in path_dicts]
     out_dict = {'tau_min': min(p['min_tau'] for p in path_dicts)}
@@ -73,6 +75,7 @@ def concatenate_paths(path_dicts: List[Dict], zero_paths=False):
 
 def rearrange_paths(h, tau):
     # Group non-negative delays under same paths
+    print("Warning: rearrange_paths is deprecated:")
     t_shape = tau.shape
     h_shape = h.shape
     n_tsteps = h_shape[-1]
