@@ -25,7 +25,7 @@ def paper_style(line_cycler=True, figsize=def_figsize):
           'text.usetex': True, 'pgf.texsystem': 'pdflatex',
           'pgf.preamble': tex_preamble,
           'text.latex.preamble': tex_preamble,
-          'font.family': 'serif', 'font.serif': []}
+          'font.family': 'serif'}
     if line_cycler:
         rc['axes.prop_cycle'] = def_cycler
     sns.set_theme(context='paper', style='whitegrid', palette=palette, rc=rc)
