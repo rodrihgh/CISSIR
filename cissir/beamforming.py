@@ -278,11 +278,10 @@ class Beamspace(Block):
 
         self._transmit_axis = transmit_axis
         self._receive_axis = receive_axis
-        self._rank = self.h_shape = None
+        self._rank = None
 
     def build(self, *args):
-        self.h_shape = args[0]
-        self._rank = len(self.h_shape)
+        self._rank = tf.size(args[0])
 
     def call(self, *inputs):
 
@@ -307,9 +306,9 @@ class Beamspace(Block):
                 axis -= h_rank
             if axis < - 2:
                 flattened_dims = -(axis + 1)
-                last_dims = self.h_shape[-flattened_dims:]
+                last_dims = h.shape[-flattened_dims:]
                 h = flatten_last_dims(h, flattened_dims)
-                beams = expand_to_rank(beams, h_rank, axis=0)
+                beams = expand_to_rank(beams, h_rank - flattened_dims + 1, axis=0)
                 h = tf.matmul(beams, h, **mm_kwargs)
                 h = split_dim(h, last_dims, axis=h_rank - flattened_dims)
             elif axis == -2:
