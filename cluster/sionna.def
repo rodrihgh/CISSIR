@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: tensorflow/tensorflow:2.13.0-gpu-jupyter
+From: tensorflow/tensorflow:2.16.1-gpu
 
 %environment
 
@@ -10,7 +10,7 @@ From: tensorflow/tensorflow:2.13.0-gpu-jupyter
     export CUDA_VISIBLE_DEVICES=0
 
     export PIP_ROOT_USER_ACTION=ignore
-    export TF_CPP_MIN_LOG_LEVEL=2	# Ignore TF warning messages
+    export TF_CPP_MIN_LOG_LEVEL=3	# Ignore TF warning messages
 
 %files
     ./cluster/requirements.txt /opt/requirements.txt
@@ -20,6 +20,7 @@ From: tensorflow/tensorflow:2.13.0-gpu-jupyter
     apt update -y
     apt dist-upgrade -y
 
+    apt install -y llvm python3-pip
     apt install -y dvipng texlive-latex-extra texlive-fonts-recommended cm-super # Install LaTex for plots
 
     pip install --upgrade pip

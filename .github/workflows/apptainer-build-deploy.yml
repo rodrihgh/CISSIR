@@ -2,14 +2,15 @@ name: Apptainer Build Deploy
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - '*'
-    paths:
-      - "**.def"
-      - "**.sh"
-      - "**.yml"
-      - "**/requirements.txt"
+#  DISABLE AUTOMATIC GH ACTION DUE TO SPACE LIMITATION
+#  push:
+#    tags:
+#      - '*'
+#    paths:
+#      - "**.def"
+#      - "**.sh"
+#      - "**.yml"
+#      - "**/requirements.txt"
 
 jobs:
   build-test-container:

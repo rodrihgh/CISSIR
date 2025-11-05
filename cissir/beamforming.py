@@ -4,9 +4,9 @@ import seaborn as sns
 from cissir.physics import pow2db, db2mag, mag2db
 
 import tensorflow as tf
-from tensorflow.keras.layers import Layer
-from sionna.utils import expand_to_rank, flatten_last_dims, split_dim
-from tensorflow.experimental import numpy as tnp
+from tensorflow.keras.ops import numpy as tnp
+
+from sionna.phy.utils import Block, expand_to_rank
 
 rng = np.random.default_rng()
 
@@ -175,7 +175,7 @@ def channel_power(h_channel: tf.Tensor, axis=None, keepdims=False, name=None):
                          axis=axis, keepdims=keepdims, name=name)
 
 
-class BeamSelection(Layer):
+class BeamSelection(Block):
     """
     Select ``num_beams`` beams with the strongest channel gain for hybrid/analog transmission.
     If ``num_rx>1``, then the strongest ``num_beams//num_rx`` beams from each user will be selected.
@@ -203,9 +203,22 @@ class BeamSelection(Layer):
 
         self._beam_axis = sionna_mimo_axes("ofdm")[-1] if beam_axis is None else beam_axis
 
-        self._original_axes = [self._beam_axis]
-        self._ordered_axes = [-1]
+        if self._beam_axis in self._power_axes:
+            raise ValueError(f"Beam axis {self._beam_axis} cannot be in power axes {self._power_axes}")
+
         self._orthogonal = orthogonal and num_beams > 1
+
+        self._beam_tiles = None
+        self.codebook_size = None
+
+    def build(self, *args: tf.TensorShape):
+        channel_shape = args[0].as_list()
+        self.codebook_size = channel_shape[self._beam_axis]
+
+        beam_tiles = [chs if i in self._power_axes else 1 for i, chs in enumerate(channel_shape)]
+        beam_tiles[self._beam_axis] = beam_tiles[-1]
+        beam_tiles[-1] = 1
+        self._beam_tiles = beam_tiles
 
     def _simple_selection(self, beam_power: tf.Tensor):
         return tf.math.top_k(beam_power, k=self._num_beams).indices
@@ -218,8 +231,8 @@ class BeamSelection(Layer):
         :return: orthogonal indices with max power
         """
 
-        cb_size = tf.unstack(tf.shape(beam_power))[-1]
-        pad_size = self._o1 * tf.cast(tf.math.ceil(cb_size / self._o1), dtype=cb_size.dtype) - cb_size
+        cb_size = self.codebook_size
+        pad_size = self._o1 * tf.cast(tf.math.ceil(cb_size / self._o1), dtype=tf.int32) - cb_size
         paddings = tf.concat([tf.zeros([beam_power.ndim-1, 2], dtype=pad_size.dtype),
                               tf.reshape([0, pad_size], [1, 2])], axis=0)
         beam_pow_pad = tf.pad(beam_power, paddings, constant_values=-1)
@@ -233,16 +246,12 @@ class BeamSelection(Layer):
 
         h_power = channel_power(h_channel, axis=self._power_axes, keepdims=True)
 
-        h_channel = tnp.moveaxis(h_channel, self._original_axes, self._ordered_axes)
-        h_power = tnp.moveaxis(h_power, self._original_axes, self._ordered_axes)
-
-        channel_shape = tf.unstack(tf.shape(h_channel))
-        channel_shape[-1] = self._num_beams
-        channel_shape = tf.stack(channel_shape)
+        h_channel = tnp.swapaxes(h_channel, self._beam_axis, -1)
+        h_power = tnp.swapaxes(h_power, self._beam_axis, -1)
 
         beam_indices = self._ortho_selection(h_power) if self._orthogonal else self._simple_selection(h_power)
-        output = tf.gather(h_channel, tf.broadcast_to(beam_indices, channel_shape), batch_dims=-1)
-        output = tnp.moveaxis(output, self._ordered_axes, self._original_axes)
+        output = tf.gather(h_channel, tf.tile(beam_indices, self._beam_tiles), batch_dims=-1)
+        output = tnp.swapaxes(output, self._beam_axis, -1)
 
         if self._normalize:
             output /= tf.sqrt(tf.cast(self._num_beams, dtype=output.dtype))
@@ -250,7 +259,7 @@ class BeamSelection(Layer):
         return output
 
 
-class Beamspace(Layer):
+class Beamspace(Block):
     r"""
 
     Convert MIMO channel from antenna space to beam space using Tx beam codebook
@@ -266,16 +275,19 @@ class Beamspace(Layer):
 
     """
 
-    def __init__(self, transmit_axis=None, receive_axis=None, rank=None, **kwargs):
+    def __init__(self, transmit_axis=None, receive_axis=None, **kwargs):
         if transmit_axis is None and receive_axis is None:
             raise ValueError('At least one axis must be set')
         super().__init__(**kwargs)
 
         self._transmit_axis = transmit_axis
         self._receive_axis = receive_axis
-        self._rank = rank
+        self._rank = None
 
-    def call(self, inputs):
+    def build(self, *args: tf.TensorShape):
+        self._rank = args[0].rank
+
+    def call(self, *inputs):
 
         tx_axis = self._transmit_axis
         rx_axis = self._receive_axis
@@ -290,25 +302,12 @@ class Beamspace(Layer):
         elif rx_axis is not None:
             h, rx_beams = inputs
 
-        h_rank = int(tf.rank(h) if self._rank is None else self._rank)
         for axis, beams, mm_kwargs in ((tx_axis, tx_beams, tx_kwargs), (rx_axis, rx_beams, rx_kwargs)):
-            if axis is None:
-                continue
-            if axis >= 0:
-                axis -= h_rank
-            if axis < - 2:
-                flattened_dims = -(axis + 1)
-                last_dims = h.shape[-flattened_dims:]
-                h = flatten_last_dims(h, flattened_dims)
-                beams = expand_to_rank(beams, tf.rank(h), axis=0)
+            if axis is not None:
+                h = tnp.swapaxes(h, axis, -2)
+                beams = expand_to_rank(beams, self._rank, axis=0)
                 h = tf.matmul(beams, h, **mm_kwargs)
-                h = split_dim(h, last_dims, axis=h_rank - flattened_dims)
-            elif axis == -2:
-                beams = expand_to_rank(beams, tf.rank(h), axis=0)
-                h = tf.matmul(beams, h, **mm_kwargs)
-            elif axis == -1:
-                beams = expand_to_rank(beams, tf.rank(h), axis=0)
-                h = tf.matvec(beams, h, **mm_kwargs)
+                h = tnp.swapaxes(h, axis, -2)
 
         return h
 
