@@ -203,18 +203,22 @@ class BeamSelection(Block):
 
         self._beam_axis = sionna_mimo_axes("ofdm")[-1] if beam_axis is None else beam_axis
 
+        if self._beam_axis in self._power_axes:
+            raise ValueError(f"Beam axis {self._beam_axis} cannot be in power axes {self._power_axes}")
+
         self._orthogonal = orthogonal and num_beams > 1
 
-        self.channel_shape = None
+        self._beam_tiles = None
         self.codebook_size = None
 
-    def build(self, *args):
-        channel_shape = tf.unstack(args[0])
+    def build(self, *args: tf.TensorShape):
+        channel_shape = args[0].as_list()
         self.codebook_size = channel_shape[self._beam_axis]
 
-        channel_shape[self._beam_axis] = channel_shape[-1]
-        channel_shape[-1] = self._num_beams
-        self.channel_shape = tf.stack(channel_shape)
+        beam_tiles = [chs if i in self._power_axes else 1 for i, chs in enumerate(channel_shape)]
+        beam_tiles[self._beam_axis] = beam_tiles[-1]
+        beam_tiles[-1] = 1
+        self._beam_tiles = beam_tiles
 
     def _simple_selection(self, beam_power: tf.Tensor):
         return tf.math.top_k(beam_power, k=self._num_beams).indices
@@ -228,7 +232,7 @@ class BeamSelection(Block):
         """
 
         cb_size = self.codebook_size
-        pad_size = self._o1 * tf.cast(tf.math.ceil(cb_size / self._o1), dtype=cb_size.dtype) - cb_size
+        pad_size = self._o1 * tf.cast(tf.math.ceil(cb_size / self._o1), dtype=tf.int32) - cb_size
         paddings = tf.concat([tf.zeros([beam_power.ndim-1, 2], dtype=pad_size.dtype),
                               tf.reshape([0, pad_size], [1, 2])], axis=0)
         beam_pow_pad = tf.pad(beam_power, paddings, constant_values=-1)
@@ -246,7 +250,7 @@ class BeamSelection(Block):
         h_power = tnp.swapaxes(h_power, self._beam_axis, -1)
 
         beam_indices = self._ortho_selection(h_power) if self._orthogonal else self._simple_selection(h_power)
-        output = tf.gather(h_channel, tf.broadcast_to(beam_indices, self.channel_shape), batch_dims=-1)
+        output = tf.gather(h_channel, tf.tile(beam_indices, self._beam_tiles), batch_dims=-1)
         output = tnp.swapaxes(output, self._beam_axis, -1)
 
         if self._normalize:
@@ -280,8 +284,8 @@ class Beamspace(Block):
         self._receive_axis = receive_axis
         self._rank = None
 
-    def build(self, *args):
-        self._rank = tf.size(args[0])
+    def build(self, *args: tf.TensorShape):
+        self._rank = args[0].rank
 
     def call(self, *inputs):
 
@@ -298,25 +302,12 @@ class Beamspace(Block):
         elif rx_axis is not None:
             h, rx_beams = inputs
 
-        h_rank = self._rank
         for axis, beams, mm_kwargs in ((tx_axis, tx_beams, tx_kwargs), (rx_axis, rx_beams, rx_kwargs)):
-            if axis is None:
-                continue
-            if axis >= 0:
-                axis -= h_rank
-            if axis < - 2:
-                flattened_dims = -(axis + 1)
-                last_dims = h.shape[-flattened_dims:]
-                h = flatten_last_dims(h, flattened_dims)
-                beams = expand_to_rank(beams, h_rank - flattened_dims + 1, axis=0)
+            if axis is not None:
+                h = tnp.swapaxes(h, axis, -2)
+                beams = expand_to_rank(beams, self._rank, axis=0)
                 h = tf.matmul(beams, h, **mm_kwargs)
-                h = split_dim(h, last_dims, axis=h_rank - flattened_dims)
-            elif axis == -2:
-                beams = expand_to_rank(beams, h_rank, axis=0)
-                h = tf.matmul(beams, h, **mm_kwargs)
-            elif axis == -1:
-                beams = expand_to_rank(beams, h_rank, axis=0)
-                h = tf.linalg.matvec(beams, h, **mm_kwargs)
+                h = tnp.swapaxes(h, axis, -2)
 
         return h
 
