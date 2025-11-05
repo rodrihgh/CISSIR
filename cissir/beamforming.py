@@ -6,7 +6,7 @@ from cissir.physics import pow2db, db2mag, mag2db
 import tensorflow as tf
 from tensorflow.keras.ops import numpy as tnp
 
-from sionna.phy.utils import Block, expand_to_rank, flatten_last_dims, split_dim
+from sionna.phy.utils import Block, expand_to_rank
 
 rng = np.random.default_rng()
 
