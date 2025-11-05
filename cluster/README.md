@@ -22,7 +22,7 @@ apptainer build --fakeroot --force cluster/sionna.sif cluster/sionna.def
 Alternatively, you can pull the built container from GitHub Container Registry:
 
 ```shell
-docker pull ghcr.io/rodrihgh/cissir/sionna.sif:v1
+docker pull ghcr.io/rodrihgh/cissir/sionna.sif:v2
 ```
 
 
