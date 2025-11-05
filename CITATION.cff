@@ -18,9 +18,9 @@ authors:
   orcid: https://orcid.org/0000-0003-3829-4668
   affiliation: Fraunhofer Heinrich Hertz Institute
 title: "Software to 'CISSIR: Beam Codebooks with Self-Interference Reduction Guarantees for Integrated Sensing and Communication Beyond 5G'"
-version: 1.7.0
-doi: 10.48550/arXiv.2502.10371
-url: "https://arxiv.org/abs/2502.10371"
+version: 1.1
+doi: 10.1109/TWC.2025.3625372
+url: "https://ieeexplore.ieee.org/document/11223631"
 preferred-citation:
   type: article
   title: 'CISSIR: Beam Codebooks with Self-Interference Reduction Guarantees for Integrated Sensing and Communication Beyond 5G'
@@ -44,4 +44,4 @@ preferred-citation:
       affiliation: Fraunhofer Heinrich Hertz Institute
   year: 2025
   journal: "IEEE Transactions on Wireless Communications"
-  doi: "10.48550/arXiv.2502.10371"
+  doi: "10.1109/TWC.2025.3625372"
