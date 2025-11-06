@@ -82,22 +82,15 @@ execution on an [HPC GPU Cluster](https://www.nvidia.com/en-us/glossary/high-per
 ## Usage
 
 The code can be directly used through [Jupyter notebooks](notebooks).
-The following order is recommended:
+After adjusting the simulation parameters in [cissir/params.py](cissir/params.py),
+the notebooks can be run in the following recommended order:
 
-0. Adjust the simulation parameters in [cissir/params.py](cissir/params.py).
-1. Simulate the channel in [simulation/channel.ipynb](notebooks/simulation/channel.ipynb).
-2. Run any of the following [optimization notebooks](notebooks/simulation):
-   1. [tapered_cissir.ipynb](notebooks/optimization/tapered_cissir.ipynb)
-   2. [phased_cissir.ipynb](notebooks/optimization/phased_cissir.ipynb)
-   3. [lonestar.ipynb](notebooks/optimization/lonestar.ipynb)
-3. Run the simulations:
-   1. [snr_sensing.ipynb](notebooks/simulation/snr_sensing.ipynb).
-   2. [si_codebook_comm.ipynb](notebooks/simulation/si_codebook_comm.ipynb).
-4. Analyze and plot the results with the [analysis notebooks](notebooks/analysis):
-   1. [link_level.ipynb](notebooks/analysis/link_level.ipynb)
-   2. [trade_off.ipynb](notebooks/analysis/trade_off.ipynb)
-   3. [time_complexity.ipynb](notebooks/analysis/time_complexity.ipynb)
-   4. [feasibility.ipynb](notebooks/analysis/feasibility.ipynb)
+| 1. [ray tracing](notebooks/simulation) | 2. [optimization](notebooks/optimization) | 3. [simulation](notebooks/simulation) | 4. [analysis](notebooks/analysis) |
+| :-------------- | :--------------  | :-------------- | :----------- |
+| a. [channel](notebooks/simulation/channel.ipynb) | a. [tapered_cissir](notebooks/optimization/tapered_cissir.ipynb) | a. [snr_sensing](notebooks/simulation/snr_sensing.ipynb) | a. [link_level](notebooks/analysis/link_level.ipynb) |
+| | b. [phased_cissir](notebooks/optimization/phased_cissir.ipynb) | b. [si_codebook_comm](notebooks/simulation/si_codebook_comm.ipynb) | b. [trade_off](notebooks/analysis/trade_off.ipynb) |
+| | c. [lonestar](notebooks/optimization/lonestar.ipynb) | | c. [time_complexity](notebooks/analysis/time_complexity.ipynb) |
+| | |  | d. [feasibility](notebooks/analysis/feasibility.ipynb) |
   
 ## Acknowledgment
 
