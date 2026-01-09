@@ -14,7 +14,7 @@
 
 Software and supplementary material for **Codebooks with Integral-Split Self-Interference Reduction**
 (**CISSIR**, pronounced like "scissor"). Please refer to the associated journal paper
-at [IEEE Trans. Wirel. Commun.](https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=7693):
+at [IEEE Trans. Wirel. Commun.](https://ieeexplore.ieee.org/xpl/tocresult.jsp?isnumber=11298242&punumber=7693):
 
 [CISSIR: Beam Codebooks with Self-Interference Reduction Guarantees for Integrated Sensing and Communication Beyond 5G][paper]
 
@@ -69,7 +69,7 @@ Afterwards, you can just execute `jupyter lab` and run the notebooks with the "C
 
 - [cissir](cissir) - Local Python modules.
 - [rt](rt) - [Blender](https://www.blender.org/) scene files for
-[Sionna's Ray Tracer](https://nvlabs.github.io/sionna/api/rt.html). 
+[Sionna's Ray Tracer](https://nvlabs.github.io/sionna/rt). 
   - Developed with the help of
   [Danial Dehghani](https://www.linkedin.com/in/danial-dehghani/).
 - [cluster](cluster) - Requirements, scripts and
@@ -108,11 +108,15 @@ _The CISSIR logo has been designed by [Risto Avramovski](https://ristoavramovski
 If you use this software or the results of [our work][paper], please cite it as:
 
 ```bibtex
-@article{hernangomez2025cissir,
-  title = {{{CISSIR}}: {{Beam Codebooks}} with {{Self-Interference Reduction Guarantees}} for {{Integrated Sensing}} and {{Communication Beyond 5G}}},
+@article{hernangomez2026cissir,
+  title = {{{CISSIR}}: {{Beam Codebooks With Self-Interference Reduction Guarantees}} for {{Integrated Sensing}} and {{Communication Beyond 5G}}},
+  shorttitle = {{{CISSIR}}},
   author = {Hernang{\'o}mez, Rodrigo and Fink, Jochen and Cavalcante, Renato Lu{\'i}s Garrido and Sta{\'n}czak, S{\l}awomir},
-  year = {2025},
+  year = 2026,
   journal = {IEEE Transactions on Wireless Communications},
+  volume = {25},
+  number = {1},
+  pages = {6523--6537},
   issn = {1558-2248},
   doi = {10.1109/TWC.2025.3625372},
 }
