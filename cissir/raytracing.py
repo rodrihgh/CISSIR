@@ -4,8 +4,8 @@ author: Danial Dehghani, Rodrigo Hernangomez
 """
 
 import numpy as np
-from typing import List, Optional, Dict
-import tensorflow as tf
+from typing import List, Optional
+import torch
 
 from sionna import rt
 
@@ -19,86 +19,11 @@ scene_fname = "scene.xml"
 rt_path = base_path/"rt"
 scene_path = str(rt_path/scene_fname)
 
-_paths_no_dim = ['min_tau', 'normalize_delays', 'reverse_direction', 'sources', 'targets']
-_paths_prelast_dim = ['a', 'vertices']
-_paths_last_dim = ['doppler', 'mask', 'objects', 'phi_r', 'phi_t',
-                   'targets_sources_mask', 'tau', 'theta_r', 'theta_t', 'types']
-
 
 def set_scattering(scattering_coefficients: dict, scene: rt.Scene) -> None:
     for rm in scene.radio_materials.values():
         if rm.name in scattering_coefficients:
             rm.scattering_coefficient = scattering_coefficients[rm.name]
-
-
-def remove_zero_paths(path_dict):
-    print("Warning: remove_zero_paths is deprecated.")
-    # Remove null paths
-    paths_a = path_dict['a']
-    path_mask = tf.reduce_any(tf.abs(paths_a) > 0.0,
-                              axis=[n for n in range(paths_a.ndim)
-                                    if n != paths_a.ndim - 2])
-
-    new_dict = {}
-    for k, v in path_dict.items():
-        if k in _paths_no_dim:
-            new_dict[k] = v   
-        elif k in _paths_prelast_dim:
-            new_dict[k] = tf.boolean_mask(v, path_mask, axis=v.ndim-2)    
-        elif k in _paths_last_dim:
-            new_dict[k] = tf.boolean_mask(v, path_mask, axis=v.ndim-1)  
-        else:
-            raise KeyError(f"Unexpected path key '{k}'")
-
-    return new_dict
-
-
-def concatenate_paths(path_dicts: List[Dict], zero_paths=False):
-    print("Warning: concatenate_paths is deprecated.")
-    if not zero_paths:
-        path_dicts = [remove_zero_paths(p) for p in path_dicts]
-    out_dict = {'tau_min': min(p['min_tau'] for p in path_dicts)}
-    p0 = path_dicts[0]
-    eq_path_opts = [k for k in _paths_no_dim if k != 'min_tau']
-    for k in eq_path_opts:
-        v = p0[k]
-        assert all(tf.reduce_all(tf.equal(v, p[k]))
-                   for p in path_dicts), f"Incompatible paths, unmatched parameter '{k}'"
-        out_dict[k] = v
-    for k in _paths_prelast_dim:
-        out_dict[k] = tf.concat([p[k] for p in path_dicts], axis=p0[k].ndim-2)
-    for k in _paths_last_dim:
-        out_dict[k] = tf.concat([p[k] for p in path_dicts], axis=p0[k].ndim-1)
-    
-    return out_dict       
-
-
-def rearrange_paths(h, tau):
-    # Group non-negative delays under same paths
-    print("Warning: rearrange_paths is deprecated:")
-    t_shape = tau.shape
-    h_shape = h.shape
-    n_tsteps = h_shape[-1]
-    num_paths = t_shape[-1]
-    tau_tab = tf.reshape(tau, shape=(-1, num_paths))
-    h_tab = tf.reshape(h, shape=(-1, num_paths, n_tsteps))
-
-    t_collector = []
-    h_collector = []
-    for i in range(tau_tab.shape[0]):
-        tau_row = tau_tab[i, :]
-        h_row = h_tab[i, :, :]
-        bool_mask = tf.greater_equal(tau_row, 0.0)
-        t_collector.append(tf.concat([tf.boolean_mask(tau_row, bool_mask),
-                                      tf.boolean_mask(tau_row, tf.logical_not(bool_mask))],
-                                     axis=0))
-        bool_mask_h = tf.stack([bool_mask for _ in range(n_tsteps)], axis=-1)
-        h_collector.append(tf.concat([tf.boolean_mask(h_row, bool_mask_h),
-                                      tf.boolean_mask(h_row, tf.logical_not(bool_mask_h))],
-                                     axis=0))
-    tau_new = tf.reshape(tf.stack(t_collector, axis=0), shape=t_shape)
-    h_new = tf.reshape(tf.stack(h_collector, axis=0), shape=h_shape)
-    return h_new, tau_new
 
 
 def cylindrical_to_cartesian(coordinates: List[float]) -> Optional[np.ndarray]:
@@ -163,23 +88,33 @@ def save_si_matrix(ht_si, t_channel_s, fname=None):
     :return: mean path delays in seconds
     """
     fname = si_mat_path if fname is None else fname
-    ht_squeeze = tf.squeeze(ht_si)
-    ht_si_abs = tf.abs(ht_squeeze)
-    mean_t = tf.reduce_sum(ht_si_abs * t_channel_s, axis=-1) / tf.reduce_sum(ht_si_abs, axis=-1)
-    t_si_matrix = tf.reduce_mean(mean_t, axis=(1, 2), keepdims=True)
+    ht_squeeze = torch.squeeze(torch.as_tensor(ht_si))
+    ht_si_abs = torch.abs(ht_squeeze)
+    t_channel_s = np.asarray(t_channel_s)
+    t_tensor = torch.as_tensor(t_channel_s, dtype=ht_si_abs.dtype, device=ht_si_abs.device)
+    mean_t = torch.sum(ht_si_abs * t_tensor, dim=-1) / torch.sum(ht_si_abs, dim=-1)
+    t_si_matrix = torch.mean(mean_t, dim=(1, 2), keepdim=True)
     si_indices = [np.argmin(np.abs(t_channel_s - t))
-                  for t in tf.reshape(t_si_matrix, -1)]
-    h_si_matrix = tf.stack([ht_squeeze[n, ..., i] for n, i in enumerate(si_indices)], axis=0)
-    np.savez(fname, h_si_matrix=h_si_matrix.numpy(), mean_delay=t_si_matrix.numpy())
+                  for t in t_si_matrix.reshape(-1).cpu().numpy()]
+    h_si_matrix = torch.stack([ht_squeeze[n, ..., i] for n, i in enumerate(si_indices)], dim=0)
+    np.savez(fname, h_si_matrix=h_si_matrix.cpu().numpy(), mean_delay=t_si_matrix.cpu().numpy())
 
     return t_si_matrix
 
 
-def load_data(*args, fname=cir_path, tf_type=None, **kwargs):
+def load_data(*args, fname=cir_path, torch_type=None, **kwargs):
+    """
+    Load arrays from a NumPy ``npz`` file
+    :param args: Names of the arrays to load
+    :param fname: Path of the ``npz`` file
+    :param torch_type: If given, convert the arrays to PyTorch tensors of this dtype
+    :param kwargs: Keyword arguments passed to ``torch.as_tensor``, e.g. ``device``
+    :return: A single array if one name is given, otherwise a list of arrays
+    """
     with np.load(fname) as rt_data:
         data = [rt_data[arg] for arg in args]
-    if tf_type is not None:
-        data = [tf.constant(d, dtype=tf_type, **kwargs) for d in data]
+    if torch_type is not None:
+        data = [torch.as_tensor(d, dtype=torch_type, **kwargs) for d in data]
     if len(data) == 1:
         return data[0]
     elif len(data) > 1:
@@ -188,8 +123,8 @@ def load_data(*args, fname=cir_path, tf_type=None, **kwargs):
         raise ValueError("At least one positional argument should be given")
 
 
-def load_cir(*args, fname=cir_path, tf_type=tf.complex64, **kwargs):
-    return load_data(*args, fname=fname, tf_type=tf_type, **kwargs)
+def load_cir(*args, fname=cir_path, torch_type=torch.complex64, **kwargs):
+    return load_data(*args, fname=fname, torch_type=torch_type, **kwargs)
 
 
 def load_si_paths(num_taps, fname=None):

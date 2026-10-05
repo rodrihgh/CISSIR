@@ -2,11 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from cissir.physics import pow2db, db2mag, mag2db
+from cissir.utils import axes_tuple
 
-import tensorflow as tf
-from tensorflow.keras.ops import numpy as tnp
+import torch
+import torch.nn.functional as F
 
-from sionna.phy.utils import Block, expand_to_rank
+from sionna.phy import Block
+from sionna.phy.utils import expand_to_rank
 
 rng = np.random.default_rng()
 
@@ -162,17 +164,26 @@ def dft_codebook(L_max: int, N1: int, O1=beam_oversampling, az_min=-60.0, az_max
     return dft_matrix, beam_degs
 
 
-def channel_power(h_channel: tf.Tensor, axis=None, keepdims=False, name=None):
+def channel_power(h_channel: torch.Tensor, axis=None, keepdims=False):
     """
     Compute the total power of a wireless channel
     :param h_channel: Channel tensor
-    :param axis: Axes on which to compute the power
+    :param axis: Axes on which to compute the power. If ``None``, all axes are reduced
     :param keepdims: Whether to keep the power dimensions
-    :param name: Tensorflow variable name
     :return: Channel power over specified ``axis``
     """
-    return tf.reduce_sum(tf.math.pow(tf.abs(h_channel), 2),
-                         axis=axis, keepdims=keepdims, name=name)
+    h_channel = torch.as_tensor(h_channel)
+    return torch.sum(torch.abs(h_channel) ** 2, dim=axes_tuple(axis, h_channel.ndim), keepdim=keepdims)
+
+
+def top_k_indices(values: torch.Tensor, k: int):
+    """
+    Indices of the ``k`` largest elements along the last axis, in descending order.
+    Ties are resolved in favor of the lowest index, as in ``tf.math.top_k``.
+    ``torch.topk`` does not guarantee this behavior, which would change the selected beams
+    whenever two beams have exactly the same power.
+    """
+    return torch.sort(values, dim=-1, descending=True, stable=True).indices[..., :k]
 
 
 class BeamSelection(Block):
@@ -184,8 +195,8 @@ class BeamSelection(Block):
     - Input: ``h_channel``
     - Output ``h_beams``, with ``num_beams`` in the ``beam_axis`` (default axis: -3)
 
-    This class inherits from the Keras `Layer` class and can be used as layer in
-    a Keras model.
+    This class inherits from the Sionna ``Block`` class, and thus accepts the ``precision``
+    and ``device`` keyword arguments.
     """
 
     _channel_ndims = 7
@@ -203,27 +214,30 @@ class BeamSelection(Block):
 
         self._beam_axis = sionna_mimo_axes("ofdm")[-1] if beam_axis is None else beam_axis
 
-        if self._beam_axis in self._power_axes:
-            raise ValueError(f"Beam axis {self._beam_axis} cannot be in power axes {self._power_axes}")
-
         self._orthogonal = orthogonal and num_beams > 1
 
         self._beam_tiles = None
         self.codebook_size = None
 
-    def build(self, *args: tf.TensorShape):
-        channel_shape = args[0].as_list()
-        self.codebook_size = channel_shape[self._beam_axis]
+    def build(self, h_shape):
+        ndim = len(h_shape)
+        power_axes = axes_tuple(self._power_axes, ndim)
+        beam_axis = axes_tuple(self._beam_axis, ndim)[0]
+        if beam_axis in power_axes:
+            raise ValueError(f"Beam axis {self._beam_axis} cannot be in power axes {self._power_axes}")
 
-        beam_tiles = [chs if i in self._power_axes else 1 for i, chs in enumerate(channel_shape)]
-        beam_tiles[self._beam_axis] = beam_tiles[-1]
-        beam_tiles[-1] = 1
+        self.codebook_size = h_shape[beam_axis]
+
+        # Replication of the selected beam indices over the (reduced) power axes, in the layout
+        # where the beam axis has been swapped with the last axis
+        beam_tiles = [chs if i in power_axes else 1 for i, chs in enumerate(h_shape)]
+        beam_tiles[beam_axis], beam_tiles[-1] = beam_tiles[-1], 1
         self._beam_tiles = beam_tiles
 
-    def _simple_selection(self, beam_power: tf.Tensor):
-        return tf.math.top_k(beam_power, k=self._num_beams).indices
+    def _simple_selection(self, beam_power: torch.Tensor):
+        return top_k_indices(beam_power, self._num_beams)
 
-    def _ortho_selection(self, beam_power: tf.Tensor):
+    def _ortho_selection(self, beam_power: torch.Tensor):
         """
         Orthogonal beam selection based on Algorithm 1 in
         'A Tutorial on Downlink Precoder Selection Strategies for 3GPP MIMO Codebooks' (Fu et al., 2023)
@@ -232,29 +246,31 @@ class BeamSelection(Block):
         """
 
         cb_size = self.codebook_size
-        pad_size = self._o1 * tf.cast(tf.math.ceil(cb_size / self._o1), dtype=tf.int32) - cb_size
-        paddings = tf.concat([tf.zeros([beam_power.ndim-1, 2], dtype=pad_size.dtype),
-                              tf.reshape([0, pad_size], [1, 2])], axis=0)
-        beam_pow_pad = tf.pad(beam_power, paddings, constant_values=-1)
+        pad_size = self._o1 * -(-cb_size // self._o1) - cb_size  # Pad to a multiple of the oversampling
+        beam_pow_pad = F.pad(beam_power, (0, pad_size), value=-1.0)
 
-        beam_max = tf.math.top_k(beam_power, k=1)
-        beam_q = tf.math.mod(beam_max.indices, self._o1)
-        ortho_beams = tf.gather(beam_pow_pad, beam_q + tf.range(cb_size, delta=self._o1), batch_dims=-1)
-        return self._o1 * tf.math.top_k(ortho_beams, k=self._num_beams).indices + beam_q
+        beam_max = torch.argmax(beam_power, dim=-1, keepdim=True)  # First index in case of ties
+        beam_q = torch.remainder(beam_max, self._o1)
+        ortho_idx = beam_q + torch.arange(0, cb_size, self._o1, device=beam_power.device)
+        ortho_beams = torch.gather(beam_pow_pad, -1, ortho_idx)
+        return self._o1 * top_k_indices(ortho_beams, self._num_beams) + beam_q
 
-    def call(self, h_channel: tf.Tensor):
+    def call(self, h_channel: torch.Tensor):
 
         h_power = channel_power(h_channel, axis=self._power_axes, keepdims=True)
 
-        h_channel = tnp.swapaxes(h_channel, self._beam_axis, -1)
-        h_power = tnp.swapaxes(h_power, self._beam_axis, -1)
+        h_channel = torch.swapaxes(h_channel, self._beam_axis, -1)
+        h_power = torch.swapaxes(h_power, self._beam_axis, -1)
 
         beam_indices = self._ortho_selection(h_power) if self._orthogonal else self._simple_selection(h_power)
-        output = tf.gather(h_channel, tf.tile(beam_indices, self._beam_tiles), batch_dims=-1)
-        output = tnp.swapaxes(output, self._beam_axis, -1)
+        # Expand (without copying) the indices over the power axes
+        beam_indices = beam_indices.expand(*[t * n for t, n in zip(self._beam_tiles, beam_indices.shape)])
+        output = torch.gather(h_channel, -1, beam_indices)
+        output = torch.swapaxes(output, self._beam_axis, -1)
 
         if self._normalize:
-            output /= tf.sqrt(tf.cast(self._num_beams, dtype=output.dtype))
+            output = output / torch.sqrt(torch.tensor(self._num_beams, dtype=output.real.dtype,
+                                                      device=output.device))
 
         return output
 
@@ -270,8 +286,8 @@ class Beamspace(Block):
 
     :math:`h_{\ldots,b',b}=\sum_{m}\sum_{n}c_{m,b'}^*h_{\ldots,m,n}w_{n,b}`
 
-    This class inherits from the Keras `Layer` class and can be used as layer in
-    a Keras model.
+    This class inherits from the Sionna ``Block`` class, and thus accepts the ``precision``
+    and ``device`` keyword arguments.
 
     """
 
@@ -284,16 +300,14 @@ class Beamspace(Block):
         self._receive_axis = receive_axis
         self._rank = None
 
-    def build(self, *args: tf.TensorShape):
-        self._rank = args[0].rank
+    def build(self, h_shape, *beam_shapes):
+        self._rank = len(h_shape)
 
     def call(self, *inputs):
 
         tx_axis = self._transmit_axis
         rx_axis = self._receive_axis
         h = tx_beams = rx_beams = None
-        tx_kwargs = dict(transpose_a=True)
-        rx_kwargs = dict(adjoint_a=True)
 
         if tx_axis is not None and rx_axis is not None:
             h, rx_beams, tx_beams = inputs
@@ -302,12 +316,14 @@ class Beamspace(Block):
         elif rx_axis is not None:
             h, rx_beams = inputs
 
-        for axis, beams, mm_kwargs in ((tx_axis, tx_beams, tx_kwargs), (rx_axis, rx_beams, rx_kwargs)):
+        # Transmit side: transpose of the codebook, receive side: Hermitian (adjoint) of the codebook
+        for axis, beams, adjoint in ((tx_axis, tx_beams, False), (rx_axis, rx_beams, True)):
             if axis is not None:
-                h = tnp.swapaxes(h, axis, -2)
-                beams = expand_to_rank(beams, self._rank, axis=0)
-                h = tf.matmul(beams, h, **mm_kwargs)
-                h = tnp.swapaxes(h, axis, -2)
+                h = torch.swapaxes(h, axis, -2)
+                beams = expand_to_rank(beams, self._rank, axis=0).to(h.dtype)
+                beams = beams.mH if adjoint else beams.mT
+                h = torch.matmul(beams, h)
+                h = torch.swapaxes(h, axis, -2)
 
         return h
 

@@ -5,8 +5,9 @@ author: Danial Dehghani, Rodrigo Hernangomez
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
+import torch
 from cissir.physics import db2mag, db2power, c0
+from cissir.utils import axes_tuple
 
 
 def abs_complex_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -34,33 +35,34 @@ def abs_complex_columns(df: pd.DataFrame) -> pd.DataFrame:
 # %%
 
 def complex_max(complex_input):
-    real_part = tf.math.real(complex_input)
-    imaginary_part = tf.math.imag(complex_input)
-    return tf.maximum(tf.reduce_max(real_part), tf.reduce_max(imaginary_part))
+    complex_input = torch.as_tensor(complex_input)
+    return torch.maximum(complex_input.real.max(), complex_input.imag.max())
 
 
 def max_abs_complex(complex_input, axis=None, keepdims=False):
-    return tf.reduce_max(tf.abs(complex_input), axis=axis, keepdims=keepdims)
+    complex_input = torch.as_tensor(complex_input)
+    return torch.amax(torch.abs(complex_input), dim=axes_tuple(axis, complex_input.ndim), keepdim=keepdims)
 
 
-def quantize_signal(signal: tf.Tensor, quantization_bits: int, max_value: float = None) -> tf.Tensor:
+def quantize_signal(signal: torch.Tensor, quantization_bits: int, max_value: float = None) -> torch.Tensor:
     """
     Quantizes a complex signal tensor into discrete levels.
 
     Arguments:
-    - signal: TensorFlow Tensor of complex numbers.
+    - signal: PyTorch Tensor of complex numbers.
     - max_value: The maximum value the real or imaginary part of the signal can take.
       If None, use the input signal to determine it
     - quantization_bits: The number of quantization bits for every signal component (I and Q).
 
     Returns:
-    - Quantized TensorFlow Tensor of complex numbers.
+    - Quantized PyTorch Tensor of complex numbers.
 
     This function separately quantizes the real and imaginary parts of the input complex signal and combines them back
     into a complex tensor.
     """
-    real_part = tf.math.real(signal)
-    imaginary_part = tf.math.imag(signal)
+    signal = torch.as_tensor(signal)
+    real_part = signal.real
+    imaginary_part = signal.imag
 
     if max_value is None:
         max_value = complex_max(signal)
@@ -69,20 +71,23 @@ def quantize_signal(signal: tf.Tensor, quantization_bits: int, max_value: float 
 
     def quantize(values):
         delta = (2 * max_value) / quantization_level
-        scaled_values = tf.math.floor(values / delta) + 0.5
+        scaled_values = torch.floor(values / delta) + 0.5
         quantized_values = scaled_values * delta
         return quantized_values
 
     quantized_real = quantize(real_part)
     quantized_imaginary = quantize(imaginary_part)
-    quantized_signal = tf.complex(quantized_real, quantized_imaginary)
+    quantized_signal = torch.complex(quantized_real, quantized_imaginary)
 
     return quantized_signal
 
 
 def papr(sig, axis=None, keepdims=False,):
-    avg_pow = tf.math.reduce_variance(sig, axis=axis, keepdims=keepdims)
-    max_pow = tf.reduce_max(tf.abs(sig), axis=axis, keepdims=keepdims)**2
+    sig = torch.as_tensor(sig)
+    dims = axes_tuple(axis, sig.ndim)
+    # Population variance (correction=0), as in TensorFlow's ``reduce_variance``
+    avg_pow = torch.var(sig, dim=dims, correction=0, keepdim=keepdims)
+    max_pow = torch.amax(torch.abs(sig), dim=dims, keepdim=keepdims)**2
     return max_pow/avg_pow
 
 

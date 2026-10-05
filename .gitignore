@@ -1,3 +1,5 @@
 *.jupyterlab-workspace
+**/.ipynb_checkpoints/
+**/__pycache__/
 results/**
 plots/**
