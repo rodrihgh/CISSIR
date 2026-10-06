@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from cissir.physics import pow2db, db2mag, mag2db
 from cissir.utils import axes_tuple
+from cissir.sigproc import signal_power
 
 import torch
 import torch.nn.functional as F
@@ -164,18 +165,6 @@ def dft_codebook(L_max: int, N1: int, O1=beam_oversampling, az_min=-60.0, az_max
     return dft_matrix, beam_degs
 
 
-def channel_power(h_channel: torch.Tensor, axis=None, keepdims=False):
-    """
-    Compute the total power of a wireless channel
-    :param h_channel: Channel tensor
-    :param axis: Axes on which to compute the power. If ``None``, all axes are reduced
-    :param keepdims: Whether to keep the power dimensions
-    :return: Channel power over specified ``axis``
-    """
-    h_channel = torch.as_tensor(h_channel)
-    return torch.sum(torch.abs(h_channel) ** 2, dim=axes_tuple(axis, h_channel.ndim), keepdim=keepdims)
-
-
 def top_k_indices(values: torch.Tensor, k: int):
     """
     Indices of the ``k`` largest elements along the last axis, in descending order.
@@ -257,7 +246,7 @@ class BeamSelection(Block):
 
     def call(self, h_channel: torch.Tensor):
 
-        h_power = channel_power(h_channel, axis=self._power_axes, keepdims=True)
+        h_power = signal_power(h_channel, axis=self._power_axes, keepdims=True)
 
         h_channel = torch.swapaxes(h_channel, self._beam_axis, -1)
         h_power = torch.swapaxes(h_power, self._beam_axis, -1)

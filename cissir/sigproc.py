@@ -5,6 +5,9 @@ Signal Processing Module
 import numpy as np
 from numpy import fft as npft
 from scipy.signal.windows import get_window
+import torch
+
+from cissir.utils import axes_tuple
 
 
 class MatchedFilter:
@@ -82,3 +85,26 @@ def fft(x, n=None, axis=-1, **kwargs):
 
 def ifft(x, n=None, axis=-1, **kwargs):
     return npft.ifft(npft.ifftshift(x, axes=axis), n, axis, **kwargs)
+
+
+
+def signal_power(x: torch.Tensor, axis=None, keepdims=False, average=False):
+    """
+    Power of a real or complex signal (or channel), computed as the squared magnitude :math:`|x|^2`
+    aggregated over the given axes.
+
+    By default, the values are *summed* (total power or energy over the axes).
+    With ``average=True`` they are *averaged* instead, which gives the average power
+    :math:`E[|x|^2]`. This is equal to the variance of the signal plus the squared magnitude of
+    its mean, and thus coincides with the variance for zero-mean signals.
+
+    :param x: Signal tensor
+    :param axis: Axis or axes on which to aggregate. If ``None``, all axes are used
+    :param keepdims: Whether to keep the aggregated dimensions
+    :param average: If ``True``, return the average power (mean of :math:`|x|^2`),
+        otherwise return the total power (sum of :math:`|x|^2`)
+    :return: Real-valued power over the specified ``axis``
+    """
+    x = torch.as_tensor(x)
+    aggregate = torch.mean if average else torch.sum
+    return aggregate(torch.abs(x) ** 2, dim=axes_tuple(axis, x.ndim), keepdim=keepdims)

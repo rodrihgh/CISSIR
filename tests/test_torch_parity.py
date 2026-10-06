@@ -17,6 +17,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent))
 import cases  # noqa: E402
 from cissir import adc, beamforming as bf, raytracing as rtr  # noqa: E402
+from cissir.sigproc import signal_power  # noqa: E402
 from cissir.utils import res_path, axes_tuple  # noqa: E402
 
 REF_PATH = Path(__file__).parent/"data"/"tf_reference.npz"
@@ -64,8 +65,9 @@ def test_axes_tuple():
 # ---------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("name", cases.CHANNEL_POWER_KWARGS)
-def test_channel_power(ref, name):
-    out = bf.channel_power(torch.from_numpy(cases.channel_power_input()), **cases.CHANNEL_POWER_KWARGS[name])
+def test_signal_power_sum(ref, name):
+    """Default behavior (sum over axes) against TF ``channel_power`` (moved from beamforming)"""
+    out = signal_power(torch.from_numpy(cases.channel_power_input()), **cases.CHANNEL_POWER_KWARGS[name])
     assert_close(out, ref[f"channel_power/{name}"], RTOL32, name)
 
 
@@ -174,22 +176,56 @@ def test_max_abs_complex(ref, name):
     assert_close(out, ref[f"adc/max_abs_complex/{name}"], RTOL32, name)
 
 
+def mean_sq(sig, kw):
+    """Squared magnitude of the mean over the same axes, in NumPy (double precision)"""
+    return np.abs(np.mean(sig.astype(np.complex128), axis=kw["axis"], keepdims=kw["keepdims"])) ** 2
+
+
+@pytest.mark.parametrize("name", cases.ADC_AXES)
+def test_signal_power_average_vs_tf_variance(ref, name):
+    """
+    The average power is E|x|^2 = Var + |E x|^2. The TF ``reduce_variance`` reference is used as oracle:
+    the variance is exactly recovered when the squared mean is subtracted from the average power.
+    """
+    sig, kw = cases.adc_signal(), cases.ADC_AXES[name]
+    power = signal_power(torch.from_numpy(sig), average=True, **kw).numpy().astype(np.float64)
+    var_tf = ref[f"adc/variance/{name}"].astype(np.float64)
+    assert_close((power - mean_sq(sig, kw)).astype(np.float32), var_tf.astype(np.float32), 1e-5, name)
+
+
+@pytest.mark.parametrize("name", cases.ADC_AXES)
+def test_signal_power_identities(name):
+    sig, kw = cases.adc_signal(), cases.ADC_AXES[name]
+    t = torch.from_numpy(sig)
+    num_elements = np.prod([sig.shape[a] for a in axes_tuple(kw["axis"], sig.ndim)])
+
+    # The default is a sum, the average is the sum divided by the number of aggregated elements
+    total = signal_power(t, **kw).numpy()
+    average = signal_power(t, average=True, **kw).numpy()
+    np.testing.assert_allclose(total, average * num_elements, rtol=1e-5)
+
+    # Real signals
+    real = sig.real
+    np.testing.assert_allclose(signal_power(torch.from_numpy(real), average=True, **kw).numpy(),
+                               np.mean(real ** 2, axis=kw["axis"], keepdims=kw["keepdims"]), rtol=1e-5)
+
+    # For zero-mean signals, the average power is the (population) variance
+    zero_mean = sig - np.mean(sig, axis=kw["axis"], keepdims=True)
+    np.testing.assert_allclose(signal_power(torch.from_numpy(zero_mean), average=True, **kw).numpy(),
+                               np.var(zero_mean, axis=kw["axis"], keepdims=kw["keepdims"]), rtol=1e-5)
+
+
 @pytest.mark.parametrize("name", cases.ADC_AXES)
 def test_papr(ref, name):
-    out = adc.papr(torch.from_numpy(cases.adc_signal()), **cases.ADC_AXES[name])
-    assert_close(out, ref[f"adc/papr/{name}"], 1e-5, name)
-
-
-@pytest.mark.parametrize("name", cases.ADC_AXES)
-def test_variance(ref, name):
-    sig = cases.adc_signal()
-    out = adc.variance(torch.from_numpy(sig), **cases.ADC_AXES[name])
-    assert_close(out, ref[f"adc/variance/{name}"], 1e-5, name)
-    # Real-valued signals, compared against the population variance in NumPy
-    real = sig.real
-    kw = cases.ADC_AXES[name]
-    np.testing.assert_allclose(adc.variance(torch.from_numpy(real), **kw).numpy(),
-                               np.var(real, axis=kw["axis"], keepdims=kw["keepdims"]), rtol=1e-5)
+    """
+    PAPR is referred to the average power instead of the variance (which discards the mean).
+    The TF reference is converted accordingly: papr = max|x|^2 / (Var + |E x|^2)
+    """
+    sig, kw = cases.adc_signal(), cases.ADC_AXES[name]
+    var_tf = ref[f"adc/variance/{name}"].astype(np.float64)
+    expected = ref[f"adc/papr/{name}"].astype(np.float64) * var_tf / (var_tf + mean_sq(sig, kw))
+    out = adc.papr(torch.from_numpy(sig), **kw)
+    assert_close(out, expected.astype(np.float32), 2e-5, name)
 
 
 @pytest.mark.parametrize("bits", cases.ADC_BITS)
