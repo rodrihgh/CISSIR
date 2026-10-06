@@ -82,11 +82,22 @@ def quantize_signal(signal: torch.Tensor, quantization_bits: int, max_value: flo
     return quantized_signal
 
 
+def variance(sig, axis=None, keepdims=False):
+    """
+    Population variance (i.e., average power after removing the mean) of a real or complex signal.
+    Unlike ``torch.var``, it does not apply Bessel's correction. For complex inputs, the variance is real.
+    :param sig: Signal tensor
+    :param axis: Axis or axes to reduce. If ``None``, all axes are reduced
+    :param keepdims: Whether to keep the reduced dimensions
+    """
+    sig = torch.as_tensor(sig)
+    return torch.var(sig, dim=axes_tuple(axis, sig.ndim), correction=0, keepdim=keepdims)
+
+
 def papr(sig, axis=None, keepdims=False,):
     sig = torch.as_tensor(sig)
     dims = axes_tuple(axis, sig.ndim)
-    # Population variance (correction=0), as in TensorFlow's ``reduce_variance``
-    avg_pow = torch.var(sig, dim=dims, correction=0, keepdim=keepdims)
+    avg_pow = variance(sig, axis=dims, keepdims=keepdims)
     max_pow = torch.amax(torch.abs(sig), dim=dims, keepdim=keepdims)**2
     return max_pow/avg_pow
 

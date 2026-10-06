@@ -180,6 +180,18 @@ def test_papr(ref, name):
     assert_close(out, ref[f"adc/papr/{name}"], 1e-5, name)
 
 
+@pytest.mark.parametrize("name", cases.ADC_AXES)
+def test_variance(ref, name):
+    sig = cases.adc_signal()
+    out = adc.variance(torch.from_numpy(sig), **cases.ADC_AXES[name])
+    assert_close(out, ref[f"adc/variance/{name}"], 1e-5, name)
+    # Real-valued signals, compared against the population variance in NumPy
+    real = sig.real
+    kw = cases.ADC_AXES[name]
+    np.testing.assert_allclose(adc.variance(torch.from_numpy(real), **kw).numpy(),
+                               np.var(real, axis=kw["axis"], keepdims=kw["keepdims"]), rtol=1e-5)
+
+
 @pytest.mark.parametrize("bits", cases.ADC_BITS)
 def test_quantize_signal(ref, bits):
     sig = torch.from_numpy(cases.adc_signal())

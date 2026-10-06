@@ -95,6 +95,8 @@ out["adc/complex_max"] = adc.complex_max(tf.constant(sig)).numpy()
 for name, kw in cases.ADC_AXES.items():
     out[f"adc/max_abs_complex/{name}"] = adc.max_abs_complex(tf.constant(sig), **kw).numpy()
     out[f"adc/papr/{name}"] = adc.papr(tf.constant(sig), **kw).numpy()
+    out[f"adc/variance/{name}"] = tf.math.reduce_variance(
+        tf.constant(sig), axis=kw["axis"], keepdims=kw["keepdims"]).numpy()
 for bits in cases.ADC_BITS:
     out[f"adc/quantize/{bits}/auto"] = adc.quantize_signal(tf.constant(sig), bits).numpy()
     out[f"adc/quantize/{bits}/fixed"] = adc.quantize_signal(tf.constant(sig), bits, max_value=4.0).numpy()
