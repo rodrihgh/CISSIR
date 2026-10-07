@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import cases  # noqa: E402
 from cissir import adc, beamforming as bf, raytracing as rtr  # noqa: E402
 from cissir.sigproc import signal_power  # noqa: E402
-from cissir.utils import res_path, axes_tuple  # noqa: E402
+from cissir.utils import axes_tuple  # noqa: E402
 
 REF_PATH = Path(__file__).parent/"data"/"tf_reference.npz"
 
@@ -100,7 +100,7 @@ def test_beamspace(ref, name):
 
 @pytest.fixture(scope="module")
 def real_data():
-    h = cases.real_channel(res_path)
+    h = cases.real_channel()
     rx_cb, tx_cb = cases.real_codebooks()
     rx_axis, tx_axis = bf.sionna_mimo_axes("ofdm")
     return h, rx_cb, tx_cb, rx_axis, tx_axis
@@ -240,8 +240,7 @@ def test_quantize_signal(ref, bits):
 # ---------------------------------------------------------------------------------------------
 
 def test_save_si_matrix(ref, tmp_path):
-    with np.load(res_path/"channel_impulse_responses.npz") as d:
-        ht_si, t_channel_s = d["ht_si"], d["t_channel_s"]
+    ht_si, t_channel_s = cases.real_si_data()
     fname = tmp_path/"si_mimo.npz"
     t_si = rtr.save_si_matrix(torch.from_numpy(ht_si), t_channel_s, fname=fname)
     with np.load(fname) as d:
@@ -252,10 +251,25 @@ def test_save_si_matrix(ref, tmp_path):
 
 
 def test_load_cir():
-    t_rt = rtr.load_cir("t_channel_s", torch_type=None)
+    fname = cases.FIXTURE_PATH
+    t_rt = rtr.load_cir("t_channel_s", fname=fname, torch_type=None)
     assert isinstance(t_rt, np.ndarray)
-    ht_tgt, ht_si = rtr.load_cir("ht_tgt", "ht_si")
+    ht_tgt, ht_si = rtr.load_cir("ht_tgt", "ht_si", fname=fname)
     assert ht_tgt.dtype == torch.complex64 and ht_si.dtype == torch.complex64
-    with np.load(res_path/"channel_impulse_responses.npz") as d:
+    with np.load(fname) as d:
         assert_equal(ht_si, d["ht_si"])
         assert_equal(ht_tgt, d["ht_tgt"])
+
+
+def test_save_cir_roundtrip(tmp_path):
+    """Tensors (any device) and arrays are stored as plain NumPy arrays"""
+    ht_si = cases.rand_complex((2, 1, 4, 1, 4, 1, 16), seed=700)
+    ht_tgt = cases.rand_complex((3, 1, 4, 1, 4, 1, 16), seed=701)
+    t = np.arange(16) * 5e-10
+    for convert in (torch.from_numpy, np.asarray):
+        fname = tmp_path/"cir.npz"
+        rtr.save_cir(convert(ht_si), convert(ht_tgt), t, fname=fname)
+        loaded_si, loaded_tgt, loaded_t = rtr.load_data("ht_si", "ht_tgt", "t_channel_s", fname=fname)
+        assert_equal(loaded_si, ht_si)
+        assert_equal(loaded_tgt, ht_tgt)
+        assert_equal(loaded_t, t)

@@ -5,6 +5,8 @@ Deterministic, framework-free test inputs shared by the TensorFlow reference gen
 Only NumPy is used here, so that exactly the same inputs are produced in both environments.
 """
 
+from pathlib import Path
+
 import numpy as np
 
 from cissir.beamforming import dft_codebook
@@ -140,9 +142,29 @@ def beamspace_cases():
     return cases
 
 
-def real_channel(res_path):
-    """Realistic SI + target channel from the repo ray-tracing results: (3, 1, 8, 1, 8, 1, 2176)"""
-    with np.load(res_path/"channel_impulse_responses.npz") as d:
+# Frozen copy of the ray-tracing channel (first taps only), so that the tests do not depend on the
+# ``results`` folder, which changes whenever the channel simulations are re-run.
+FIXTURE_PATH = Path(__file__).parent/"data"/"real_channel.npz"
+FIXTURE_TAPS = 640  # Covers the self-interference paths and the target echoes
+
+
+def make_real_channel_fixture(res_path, fname=FIXTURE_PATH, num_taps=FIXTURE_TAPS):
+    """Create the frozen test channel from ``channel_impulse_responses.npz``. Only needed to refresh the fixture"""
+    with np.load(Path(res_path)/"channel_impulse_responses.npz") as d:
+        np.savez_compressed(fname, ht_si=d["ht_si"][..., :num_taps], ht_tgt=d["ht_tgt"][..., :num_taps],
+                            t_channel_s=d["t_channel_s"][:num_taps])
+    return Path(fname)
+
+
+def real_si_data():
+    """Self-interference taps (num_si, 1, 8, 1, 8, 1, taps) and time support of the frozen channel"""
+    with np.load(FIXTURE_PATH) as d:
+        return d["ht_si"], d["t_channel_s"]
+
+
+def real_channel():
+    """Realistic SI + target channel, from the frozen ray-tracing results: (n, 1, 8, 1, 8, 1, taps)"""
+    with np.load(FIXTURE_PATH) as d:
         return np.concatenate([d["ht_si"], d["ht_tgt"]], axis=0)
 
 

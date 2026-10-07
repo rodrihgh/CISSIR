@@ -24,6 +24,8 @@ DEFAULT_REV = "fa6a72f"  # last commit before the PyTorch migration
 parser = argparse.ArgumentParser()
 parser.add_argument("--rev", default=DEFAULT_REV, help="git revision with the TensorFlow-based cissir package")
 parser.add_argument("--out", default=str(repo/"tests"/"data"/"tf_reference.npz"))
+parser.add_argument("--refresh-fixture", action="store_true",
+                    help="re-create tests/data/real_channel.npz from results/channel_impulse_responses.npz")
 args = parser.parse_args()
 
 # Extract the TF-based package into a temp dir and make it take precedence over the working tree
@@ -42,6 +44,11 @@ print("TensorFlow", tf.__version__, "| cissir from", args.rev)
 
 out = {}
 res_path = repo/"results"
+
+# The tests use a frozen copy of the ray-tracing channel (see cases.py)
+if args.refresh_fixture or not cases.FIXTURE_PATH.exists():
+    cases.FIXTURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    print("Created fixture", cases.make_real_channel_fixture(res_path))
 
 # --- channel_power --------------------------------------------------------------------------
 h = cases.channel_power_input()
@@ -71,7 +78,7 @@ def store_long(name, arr, stride=32):
 
 
 # --- Realistic pipeline: Beamspace -> BeamSelection on ray-tracing channels ---------------------
-h_real = cases.real_channel(res_path)
+h_real = cases.real_channel()
 rx_cb, tx_cb = cases.real_codebooks()
 rx_axis, tx_axis = bf.sionna_mimo_axes("ofdm")
 h_bs = bf.Beamspace(transmit_axis=tx_axis, receive_axis=rx_axis)(
@@ -102,8 +109,7 @@ for bits in cases.ADC_BITS:
     out[f"adc/quantize/{bits}/fixed"] = adc.quantize_signal(tf.constant(sig), bits, max_value=4.0).numpy()
 
 # --- raytracing -----------------------------------------------------------------------------
-with np.load(res_path/"channel_impulse_responses.npz") as d:
-    ht_si, t_channel_s = d["ht_si"], d["t_channel_s"]
+ht_si, t_channel_s = cases.real_si_data()
 with tempfile.TemporaryDirectory() as tdir:
     fname = Path(tdir)/"si_mimo.npz"
     t_si = rtr.save_si_matrix(tf.constant(ht_si), t_channel_s, fname=fname)
