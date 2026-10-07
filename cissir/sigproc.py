@@ -3,9 +3,10 @@ Signal Processing Module
 """
 
 import numpy as np
-from numpy import fft as npft
 from scipy.signal.windows import get_window
 import torch
+
+from sionna.phy.channel import ofdm_to_time_channel
 
 from cissir.utils import axes_tuple
 
@@ -14,10 +15,14 @@ class MatchedFilter:
     """
     Provides functionality for matched filtering in RF systems.
 
-    The MatchedFilter class is used to perform matched filtering operations.
+    The MatchedFilter class is used to perform matched filtering operations on PyTorch tensors.
     This implementation includes options for applying a specified window
     function, operating in the time domain or frequency domain, and returning
     the applied filter along with the filtered signal.
+
+    The frequency-domain signals follow Sionna's OFDM convention, i.e., centered subcarrier ordering, and
+    the transformation to the time domain is carried out with
+    :func:`sionna.phy.channel.ofdm_to_time_channel`.
 
     Attributes:
         time_input (bool): Indicates whether the input signals are in the time domain.
@@ -48,44 +53,45 @@ class MatchedFilter:
         the applied filter.
 
         Parameters:
-        signal: The input signal to be filtered.
-        reference: The reference signal used for filtering.
+        signal: The input signal to be filtered (tensor or array-like).
+        reference: The reference signal used for filtering (tensor or array-like).
         axis: int, optional
-            The axis along which filtering is applied. Default is -1.
+            The axis along which filtering is applied, which is also the one the window is applied to.
+            Default is -1.
         return_filter: bool, optional
             If True, the applied filter is returned alongside the filtered signal. Default is False.
 
         Returns:
-            The filtered signal. If `return_filter` is True, returns a tuple containing
+            The filtered signal as a tensor. If `return_filter` is True, returns a tuple containing
             the filtered signal and the filter used.
         """
+        signal = torch.movedim(torch.as_tensor(signal), axis, -1)
+        reference = torch.movedim(torch.as_tensor(reference), axis, -1)
 
         if self.time_input:
-            signal = fft(signal, axis=axis)
-            reference = fft(reference, axis=axis)
+            signal = _fft_centered(signal)
+            reference = _fft_centered(reference)
 
         # Frequency-domain matched filter
-        x_win = np.conj(reference) * self._window
+        window = torch.as_tensor(self._window, dtype=reference.real.dtype, device=reference.device)
+        x_win = reference.conj() * window
         h_freq = signal * x_win
 
         if self.time_output:
-            h_freq = ifft(h_freq, axis=axis)
+            h_freq = ofdm_to_time_channel(h_freq)
             if return_filter:
-                x_win = ifft(x_win, axis=axis)
+                x_win = ofdm_to_time_channel(x_win)
 
+        h_freq = torch.movedim(h_freq, -1, axis)
         if return_filter:
-            return h_freq, x_win
+            return h_freq, torch.movedim(x_win, -1, axis)
         else:
             return h_freq
 
 
-def fft(x, n=None, axis=-1, **kwargs):
-    return npft.fftshift(npft.fft(x, n, axis, **kwargs), axes=axis)
-
-
-def ifft(x, n=None, axis=-1, **kwargs):
-    return npft.ifft(npft.ifftshift(x, axes=axis), n, axis, **kwargs)
-
+def _fft_centered(x):
+    """DFT along the last axis, with the zero frequency in the center"""
+    return torch.fft.fftshift(torch.fft.fft(x, dim=-1), dim=-1)
 
 
 def signal_power(x: torch.Tensor, axis=None, keepdims=False, average=False):

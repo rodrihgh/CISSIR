@@ -9,6 +9,7 @@ import torch
 import torch.nn.functional as F
 
 from sionna.phy import Block
+from sionna.phy.isac import steering_vectors
 from sionna.phy.utils import expand_to_rank
 
 rng = np.random.default_rng()
@@ -23,20 +24,25 @@ beam_oversampling = 4
 
 def steer_vec(n_elements, thetas_rad, electric_length=0.5, centered=False):
     """
-    Steering vector of uniform linear array (ULA) for one or more angles
+    Steering vector of uniform linear array (ULA) for one or more angles.
+    It relies on Sionna's :func:`~sionna.phy.isac.steering_vectors`, without its unit-norm scaling.
     :param n_elements: Number of elements in the ULA
-    :param thetas_rad: Incidence angle(s) in radians. It can be a singleton or an array
+    :param thetas_rad: Incidence angle(s) in radians, measured from broadside. It can be a singleton or an array
     :param electric_length: physical length over wavelength. Defaults to lambda half
     :param centered: If ``True``, the reference element is at the center of the ULA
     :return: Steering vector/matrix with shape (n_elements, len(thetas_rad))
     """
 
-    phase_delta = electric_length * 2 * np.pi * np.sin(thetas_rad)
-    el_array = np.arange(n_elements, dtype=float)
+    # The ULA lies along the y-axis and the angles are azimuths on the horizontal plane. The wavelength is set to one
+    element_idx = torch.arange(n_elements, dtype=torch.float64)
     if centered:
-        el_array -= (n_elements-1)/2
-    phase = el_array[:, np.newaxis] * np.expand_dims(phase_delta, axis=0)
-    return np.exp(1j * phase)
+        element_idx -= (n_elements - 1) / 2
+    positions = torch.zeros(n_elements, 3, dtype=torch.float64)
+    positions[:, 1] = element_idx * electric_length
+
+    azimuths = torch.as_tensor(np.asarray(thetas_rad, dtype=float).reshape(-1))
+    a = steering_vectors(positions, np.pi / 2, azimuths, wavelength=1.0, precision="double")
+    return (a[0] * np.sqrt(n_elements)).T.numpy()
 
 
 def quantize_codebook(beam_codebook, max_amp=None, num_phases=num_q_phases, num_amps=num_q_amps):
@@ -65,8 +71,8 @@ def array_factor(antenna_weights, thetas_radian, n_antennas=None, transmit=True)
         n_antennas = len(antenna_weights)
 
     d_sign = 1 if transmit else -1
-    af = np.array([steer_vec(n_antennas, d_sign * d).reshape(1, n_antennas) @ antenna_weights
-                   for d in thetas_radian]).squeeze()
+    steering = steer_vec(n_antennas, d_sign * np.asarray(thetas_radian, dtype=float))  # (n_antennas, num_angles)
+    af = (steering.T @ antenna_weights).squeeze()
     return af
 
 

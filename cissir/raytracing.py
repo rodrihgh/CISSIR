@@ -74,9 +74,16 @@ def si_paths2cir(si_paths, axis_path=0, transpose=(2, 0, 1)):
     return result
 
 
+def _to_numpy(x):
+    """Convert a tensor (on any device) or array-like to a NumPy array"""
+    if isinstance(x, torch.Tensor):
+        return x.detach().cpu().numpy()
+    return np.asarray(x)
+
+
 def save_cir(ht_si, ht_tgt, t_channel_s, fname=None):
     fname = cir_path if fname is None else fname
-    np.savez(fname, ht_si=np.array(ht_si), ht_tgt=np.array(ht_tgt), t_channel_s=np.array(t_channel_s))
+    np.savez(fname, ht_si=_to_numpy(ht_si), ht_tgt=_to_numpy(ht_tgt), t_channel_s=_to_numpy(t_channel_s))
 
 
 def save_si_matrix(ht_si, t_channel_s, fname=None):
