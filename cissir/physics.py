@@ -73,11 +73,3 @@ def radar_rng_eq(rcs_sigma, wavelength_m, tx_distance_m, rx_distance_m=None):
     power_att = ((wl ** 2) * s)/(((4 * np.pi) ** 3) * (r1 ** 2) * (r2 ** 2))
 
     return np.sqrt(power_att)
-
-
-def estimate_rcs(power_profile, distance, wavelength, g_tx, g_rx):
-
-    assert power_profile.shape[-1] == distance.shape[-1], "Distance and power profile must have the same last dimension"
-    
-    rcs = ((4*np.pi) ** 3)/(g_tx * g_rx * (wavelength ** 2)) * np.sum((distance ** 4) * power_profile, axis=-1)
-    return rcs
