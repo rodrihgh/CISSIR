@@ -22,6 +22,12 @@ from cissir.utils import axes_tuple  # noqa: E402
 
 REF_PATH = Path(__file__).parent/"data"/"tf_reference.npz"
 
+
+def require_data(path):
+    """Skip the test if a (git-ignored) data file is missing. See tests/README.md to generate it"""
+    if not Path(path).exists():
+        pytest.skip(f"{Path(path).name} not found, see tests/README.md to generate it")
+
 # Relative tolerance in terms of the largest magnitude of the reference (single precision)
 RTOL32 = 2e-6
 RTOL64 = 1e-12
@@ -29,6 +35,7 @@ RTOL64 = 1e-12
 
 @pytest.fixture(scope="module")
 def ref():
+    require_data(REF_PATH)
     with np.load(REF_PATH) as d:
         return {k: d[k] for k in d.files}
 
@@ -100,6 +107,7 @@ def test_beamspace(ref, name):
 
 @pytest.fixture(scope="module")
 def real_data():
+    require_data(cases.FIXTURE_PATH)
     h = cases.real_channel()
     rx_cb, tx_cb = cases.real_codebooks()
     rx_axis, tx_axis = bf.sionna_mimo_axes("ofdm")
@@ -240,6 +248,7 @@ def test_quantize_signal(ref, bits):
 # ---------------------------------------------------------------------------------------------
 
 def test_save_si_matrix(ref, tmp_path):
+    require_data(cases.FIXTURE_PATH)
     ht_si, t_channel_s = cases.real_si_data()
     fname = tmp_path/"si_mimo.npz"
     t_si = rtr.save_si_matrix(torch.from_numpy(ht_si), t_channel_s, fname=fname)
@@ -251,6 +260,7 @@ def test_save_si_matrix(ref, tmp_path):
 
 
 def test_load_cir():
+    require_data(cases.FIXTURE_PATH)
     fname = cases.FIXTURE_PATH
     t_rt = rtr.load_cir("t_channel_s", fname=fname, torch_type=None)
     assert isinstance(t_rt, np.ndarray)

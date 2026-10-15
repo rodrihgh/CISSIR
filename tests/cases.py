@@ -150,6 +150,7 @@ FIXTURE_TAPS = 640  # Covers the self-interference paths and the target echoes
 
 def make_real_channel_fixture(res_path, fname=FIXTURE_PATH, num_taps=FIXTURE_TAPS):
     """Create the frozen test channel from ``channel_impulse_responses.npz``. Only needed to refresh the fixture"""
+    Path(fname).parent.mkdir(parents=True, exist_ok=True)
     with np.load(Path(res_path)/"channel_impulse_responses.npz") as d:
         np.savez_compressed(fname, ht_si=d["ht_si"][..., :num_taps], ht_tgt=d["ht_tgt"][..., :num_taps],
                             t_channel_s=d["t_channel_s"][:num_taps])
