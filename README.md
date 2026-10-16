@@ -18,6 +18,13 @@ at [IEEE Trans. Wirel. Commun.](https://ieeexplore.ieee.org/xpl/tocresult.jsp?is
 
 [CISSIR: Beam Codebooks with Self-Interference Reduction Guarantees for Integrated Sensing and Communication Beyond 5G][paper]
 
+> [!NOTE]
+> **Version notice.** The experiments of the [journal paper][paper] were generated with
+> [v1.1](https://github.com/rodrihgh/CISSIR/releases/tag/v1.1), the accepted version of this software, which was
+> based on Sionna 0.17.0 and TensorFlow. The current version (v3.0) has been updated to Sionna 2.x and PyTorch
+> with the assistance of an agentic AI coding tool ([Claude Code](https://claude.com/claude-code)).
+> Results obtained with it may therefore differ numerically from those reported in the paper.
+
 ![CISSIR diagram](pics/cissir_diagram.svg)
 
 ## Main features
