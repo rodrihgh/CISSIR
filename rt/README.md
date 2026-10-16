@@ -1,6 +1,6 @@
 # Ray-Tracing
 
-The ray-tracing simulations are based on [Sionna](https://nvlabs.github.io/sionna/api/rt.html)
+The ray-tracing simulations are based on [Sionna](https://nvlabs.github.io/sionna/rt/index.html)
 and they have been developed with the help of
 [Danial Dehghani](https://www.linkedin.com/in/danial-dehghani/).
 

@@ -19,10 +19,18 @@ Navigate to the project's root directory in the command line and run:
 apptainer build --fakeroot --force cluster/sionna.sif cluster/sionna.def
 ```
 
+The container is based on Ubuntu 24.04 and installs [PyTorch](https://pytorch.org/) with its own CUDA libraries.
+The CUDA version of the PyTorch build (default: `cu126`) must be supported by the NVIDIA driver of the cluster.
+You can select another one with a build argument, e.g.:
+
+```shell
+apptainer build --fakeroot --force --build-arg TORCH_CUDA=cu130 cluster/sionna.sif cluster/sionna.def
+```
+
 Alternatively, you can pull the built container from GitHub Container Registry:
 
 ```shell
-docker pull ghcr.io/rodrihgh/cissir/sionna.sif:v2
+docker pull ghcr.io/rodrihgh/cissir/sionna.sif:v3
 ```
 
 

@@ -1,30 +1,44 @@
 Bootstrap: docker
-From: tensorflow/tensorflow:2.16.1-gpu
+From: ubuntu:24.04
+
+%arguments
+    # CUDA flavor of the PyTorch wheels (cu126 or cu130). The NVIDIA driver of the cluster must support it.
+    # Override it at build time with: apptainer build --build-arg TORCH_CUDA=cu130 ...
+    TORCH_CUDA=cu126
 
 %environment
 
     export PROJ_ROOT="/mnt/project"
     export PYTHONPATH=$PROJ_ROOT
+    export PATH=/opt/venv/bin:$PATH
 
     export NVIDIA_VISIBLE_DEVICES=0
     export CUDA_VISIBLE_DEVICES=0
 
     export PIP_ROOT_USER_ACTION=ignore
-    export TF_CPP_MIN_LOG_LEVEL=3	# Ignore TF warning messages
 
 %files
     ./cluster/requirements.txt /opt/requirements.txt
 
 %post
 
+    export DEBIAN_FRONTEND=noninteractive
+
     apt update -y
     apt dist-upgrade -y
 
-    apt install -y llvm python3-pip
+    apt install -y python3 python3-venv llvm  # LLVM is required by Dr.Jit (Sionna RT)
     apt install -y dvipng texlive-latex-extra texlive-fonts-recommended cm-super # Install LaTex for plots
 
-    pip install --upgrade pip
-    pip install -r /opt/requirements.txt
+    python3 -m venv /opt/venv
+    /opt/venv/bin/pip install --upgrade pip
+
+    # PyTorch comes with its own CUDA libraries. Install it first, from the index of the chosen CUDA flavor
+    /opt/venv/bin/pip install torch --index-url https://download.pytorch.org/whl/{{ TORCH_CUDA }}
+    /opt/venv/bin/pip install -r /opt/requirements.txt
+
+    # Kernel used by the notebooks
+    /opt/venv/bin/python -m ipykernel install --sys-prefix --name cissir3 --display-name "CISSIR-v3 (python 3)"
 
 %runscript
 

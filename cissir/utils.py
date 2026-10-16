@@ -12,6 +12,24 @@ plot_path = base_path/"plots"
 res_path = base_path/"results"
 
 
+def axes_tuple(axis, ndim):
+    """
+    Normalize a reduction axis specification to a tuple of non-negative axes.
+    This is needed since PyTorch reductions do not accept ``axis=None`` uniformly.
+    :param axis: ``None`` (all axes), an integer or an iterable of integers. Negative values are allowed.
+    :param ndim: Number of dimensions of the reduced tensor
+    :return: Tuple with the sorted, non-negative, unique axes
+    """
+    if axis is None:
+        return tuple(range(ndim))
+    if isinstance(axis, int):
+        axis = (axis,)
+    axes = {int(a) + ndim if int(a) < 0 else int(a) for a in axis}
+    if any(not 0 <= a < ndim for a in axes):
+        raise ValueError(f"Axis {tuple(axis)} out of range for a tensor with {ndim} dimensions")
+    return tuple(sorted(axes))
+
+
 class PrintBuffer:
     def __init__(self, print_input=True, sep="\n"):
         self.print_input = print_input

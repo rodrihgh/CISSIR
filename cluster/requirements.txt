@@ -2,15 +2,16 @@ jupyterlab>=3.0
 notebook
 ipykernel>6.0
 ipympl
-drjit
-mitsuba
-numpy
+numpy>=2.2.6
 cvxpy
 pandas
 scipy
 numba
 matplotlib
 seaborn
-tensorflow[and-cuda]==2.16.1
-sionna==1.2.1
 tqdm
+# PyTorch: pip installs the default CUDA build. For a specific CUDA version, install torch beforehand
+# with `--index-url https://download.pytorch.org/whl/<cu126|cu130>` (see cluster/README.md)
+torch>=2.9.1
+# Sionna also installs Sionna RT, Mitsuba and Dr.Jit with the matching versions
+sionna==2.2.0
